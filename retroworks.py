@@ -28,7 +28,7 @@ import sys
 import textwrap
 import unicodedata
 
-VERSION = '1.0'
+VERSION = '1.1'
 EXT = {'wp': '.rwp', 'db': '.rdb', 'ss': '.rss'}
 KIND_NAME = {'wp': 'Word Processor', 'db': 'Data Base', 'ss': 'Spreadsheet'}
 KIND_SHORT = {'wp': 'WP', 'db': 'DB', 'ss': 'SS'}
@@ -2673,10 +2673,10 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
 
     # main menu
     'Main Menu': 'תפריט ראשי',
-    'Add files to the Desktop': 'הוספת קבצים ל-Desktop',
-    'Work with one of the files on the Desktop': 'עבודה עם אחד הקבצים שב-Desktop',
-    'Save Desktop files to disk': 'שמירת קבצי ה-Desktop בדיסק',
-    'Remove files from the Desktop': 'הסרת קבצים מה-Desktop',
+    'Add files to the Desktop': 'הוספת קבצים לשולחן העבודה',
+    'Work with one of the files on the Desktop': 'עבודה עם אחד הקבצים שעל שולחן העבודה',
+    'Save Desktop files to disk': 'שמירת הקבצים שעל שולחן העבודה בדיסק',
+    'Remove files from the Desktop': 'הסרת קבצים משולחן העבודה',
     'Other Activities': 'פעולות נוספות',
     'Quit': 'יציאה',
     'Do you really want to quit?': 'לצאת מהתוכנה?',
@@ -2695,22 +2695,22 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
     'From a text (ASCII / CSV) file': 'מקובץ טקסט (ASCII / CSV)',
     'From a text (CSV) file': 'מקובץ טקסט (CSV)',
     'Get Files': 'בחירת קובץ',
-    'The Desktop is full ({n} files). Remove a file first.': 'ה-Desktop מלא ({n} קבצים). יש להסיר קובץ קודם.',
+    'The Desktop is full ({n} files). Remove a file first.': 'שולחן העבודה מלא ({n} קבצים). יש להסיר קובץ קודם.',
     'Type the pathname of the disk (folder):': 'הקלד את הנתיב של הדיסק (התיקייה):',
     'There is no folder called {path}': 'אין תיקייה בשם {path}',
     'There are no RetroWorks files on {disk}': 'אין קובצי RetroWorks ב-{disk}',
-    'That file is already on the Desktop.': 'הקובץ הזה כבר נמצא ב-Desktop.',
+    'That file is already on the Desktop.': 'הקובץ הזה כבר נמצא על שולחן העבודה.',
     'Could not read that file: {err}': 'לא ניתן לקרוא את הקובץ: {err}',
     'Type a name for this new file:': 'הקלד שם לקובץ החדש:',
-    'A file with that name is already on the Desktop.': 'כבר יש ב-Desktop קובץ בשם הזה.',
+    'A file with that name is already on the Desktop.': 'כבר יש על שולחן העבודה קובץ בשם הזה.',
     '"{file}" already exists on disk. Replace it when you save?': 'הקובץ "{file}" כבר קיים בדיסק. להחליף אותו בשמירה?',
     'Type the complete pathname of the text file:': 'הקלד את הנתיב המלא של קובץ הטקסט:',
     'That file is empty.': 'הקובץ ריק.',
 
     # desktop / save / remove
-    'Desktop Index': 'רשימת ה-Desktop',
-    'There are no files on the Desktop. Use "Add files" first.': 'אין קבצים ב-Desktop. השתמש קודם ב"הוספת קבצים".',
-    'There are no files on the Desktop.': 'אין קבצים ב-Desktop.',
+    'Desktop Index': 'הקבצים שעל שולחן העבודה',
+    'There are no files on the Desktop. Use "Add files" first.': 'אין קבצים על שולחן העבודה. השתמש קודם ב"הוספת קבצים".',
+    'There are no files on the Desktop.': 'אין קבצים על שולחן העבודה.',
     'Save Files': 'שמירת קבצים',
     'Save which file?': 'איזה קובץ לשמור?',
     'All changed files': 'כל הקבצים ששונו',
@@ -2720,7 +2720,7 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
     'Could not save: {err}': 'השמירה נכשלה: {err}',
     'Remove Files': 'הסרת קבצים',
     '"{name}" has changes. Save it before removing?': 'יש שינויים ב-"{name}". לשמור לפני ההסרה?',
-    '"{name}" removed from the Desktop.': '"{name}" הוסר מה-Desktop.',
+    '"{name}" removed from the Desktop.': '"{name}" הוסר משולחן העבודה.',
 
     # other activities
     'Change current disk': 'החלפת הדיסק הנוכחי',
@@ -2732,7 +2732,7 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
     'Could not create folder: {err}': 'לא ניתן ליצור את התיקייה: {err}',
     'Current disk is now {disk}': 'הדיסק הנוכחי הוא עכשיו {disk}',
     'Delete Files': 'מחיקת קבצים',
-    'That file is on the Desktop. Remove it from the Desktop first.': 'הקובץ נמצא ב-Desktop. יש להסיר אותו מה-Desktop קודם.',
+    'That file is on the Desktop. Remove it from the Desktop first.': 'הקובץ נמצא על שולחן העבודה. יש להסיר אותו משולחן העבודה קודם.',
     'Permanently delete "{file}" from the disk?': 'למחוק את "{file}" מהדיסק לצמיתות?',
     'Deleted {file}': 'הקובץ {file} נמחק',
     'Could not delete: {err}': 'המחיקה נכשלה: {err}',
@@ -2740,9 +2740,9 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
     'Memory size': 'גודל הזיכרון',
     'Memory Size': 'גודל הזיכרון',
     'How much memory does this computer have?': 'כמה זיכרון יש במחשב הזה?',
-    '{n}K for the Desktop': '{n}K ל-Desktop',
+    '{n}K for the Desktop': '{n}K לשולחן העבודה',
     'Memory: {name}  ({n}K available)': 'זיכרון: {name}  ({n}K פנויים)',
-    'The Desktop memory is full. Remove a file or add memory.': 'זיכרון ה-Desktop מלא. הסר קובץ או הוסף זיכרון.',
+    'The Desktop memory is full. Remove a file or add memory.': 'הזיכרון של שולחן העבודה מלא. הסר קובץ או הוסף זיכרון.',
     'Choose the language for menus and messages:': 'בחר את שפת התפריטים וההודעות:',
     'Language: {name}': 'שפה: {name}',
 
@@ -2856,7 +2856,7 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
         'נכתבה מאפס ב-Python. זו אינה AppleWorks, אין בה קוד של Apple,',
         'והיא אינה קשורה ל-Apple Inc. ואינה מאושרת על ידה.',
         '',
-        'ב-Desktop אפשר להחזיק עד 12 קבצים פתוחים.',
+        'על שולחן העבודה אפשר להחזיק עד 12 קבצים פתוחים.',
         'Escape   תמיד מחזיר אחורה, עד התפריט הראשי.',
         'Ctrl-Q   (Quick Change) קפיצה ישירה לקובץ אחר.',
         'Ctrl-K   עזרה עבור סוג הקובץ שעובדים עליו.',
