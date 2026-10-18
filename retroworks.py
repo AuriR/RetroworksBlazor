@@ -36,6 +36,13 @@ MAX_DESKTOP = 12
 COLS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 MAXROW = 999
 MIN_H, MIN_W = 24, 80
+# memory configurations offered under Other Activities > Memory size.
+# The Desktop gets what is left after the program itself (72K).
+MEMORY_SIZES = [('Apple //e  128K', 128),
+                ('RamWorks III  512K', 512),
+                ('RamWorks III  1 MB', 1024),
+                ('RamWorks III  3 MB', 3072)]
+PROGRAM_K = 72
 
 
 # --------------------------------------------------------------------------
@@ -459,8 +466,10 @@ class App:
         self.desktop = []
         self.current = None
         self.msg = ''
+        self.mem_kb = 128
         self.clip_wp = []
         self.clip_wp_dirs = []
+        self.clip_wp_sty = []
         self.clip_ss = None
         self.clip_db = None
         self._colors(theme)
@@ -662,7 +671,7 @@ class App:
 
     def avail(self):
         used = sum(d.size() for d in self.desktop)
-        return max(0, 56 - used // 1024)
+        return max(0, self.mem_kb - PROGRAM_K - used // 1024)
 
     def draw_stack(self, path, esc='', foot='', foot_r=''):
         """Draw the header, every menu layer in `path` (outermost first) and
@@ -983,6 +992,7 @@ class App:
         if kind == 'wp':
             d.paras = [clean(l) for l in lines] or ['']
             d.detect_dirs()
+            d.sty = ['0' * len(x) for x in d.paras]
         else:
             rows = [r for r in csv.reader(lines)]
             if not rows:
@@ -1060,6 +1070,10 @@ class App:
                 self.msg = T('The Desktop is full ({n} files). Remove a file first.', n=MAX_DESKTOP)
                 beep()
                 return None
+            if self.avail() <= 0:
+                self.msg = 'The Desktop memory is full. Remove a file or add memory.'
+                beep()
+                return None
             items = [('h', 'Get files from:'), None,
                      T('The current disk: {disk}', disk=self.short_folder()),
                      'A different disk', None,
@@ -1125,6 +1139,7 @@ class App:
         while True:
             i = self.select(P, spaced(['Change current disk',
                                        'Delete files from disk',
+                                       'Memory size',
                                        'Choose language  (Language / שפה)',
                                        'About RetroWorks']), sel)
             if i is None:
@@ -1170,9 +1185,26 @@ class App:
                         self.msg = T('Could not delete: {err}', err=e)
                         beep()
             elif i == 2:
-                self.language_menu(P)
+                self.memory_menu(P)
             elif i == 3:
+                self.language_menu(P)
+            elif i == 4:
                 self.show_text('About RetroWorks', help_text('about', ABOUT))
+
+    def memory_menu(self, path):
+        sizes = [kb for _, kb in MEMORY_SIZES]
+        items = [('h', 'How much memory does this computer have?'), None]
+        items += [f"{name:<22}{T('{n}K for the Desktop', n=kb - PROGRAM_K):<24}"
+                  f"{'*' if kb == self.mem_kb else ''}" for name, kb in MEMORY_SIZES]
+        i = self.select(path + ['Memory Size'], items,
+                        sizes.index(self.mem_kb) if self.mem_kb in sizes else 0)
+        if i is None:
+            return
+        self.mem_kb = sizes[i]
+        cfg = load_config()
+        cfg['memory'] = self.mem_kb
+        save_config(cfg)
+        self.msg = T('Memory: {name}  ({n}K available)', name=MEMORY_SIZES[i][0], n=self.avail())
 
     def language_menu(self, path):
         codes = sorted(LANGUAGES, key=lambda c: (c != 'en', LANGUAGES[c]['name'].lower()))
@@ -1423,7 +1455,7 @@ class WPDoc(Doc):
     HELP = [
         'WORD PROCESSOR COMMANDS          (Ctrl replaces the Open-Apple key)',
         '',
-        'Arrows ............ move the cursor     Ctrl-T / Ctrl-B .. top / bottom',
+        'Arrows ............ move the cursor     Ctrl-T / Ctrl-G .. top / bottom',
         'PgUp / PgDn ....... page up / down      Home / End ....... start / end of line',
         'Return ............ new paragraph       Ctrl-E ........... Insert / Overwrite',
         'Delete ............ delete left         Ctrl-D ........... delete right',
@@ -1435,9 +1467,13 @@ class WPDoc(Doc):
         'Ctrl-F ............ find (again)        Ctrl-R ........... replace all',
         'Ctrl-P ............ "print" to a plain .txt file (76 columns)',
         'Ctrl-L ............ paragraph direction: left-to-right / right-to-left',
+        'Ctrl-B ............ bold on / off       Ctrl-U ........... underline on / off',
         '',
         'Ctrl-S ............ save                Ctrl-Q ........... quick change',
         'Escape ............ Main Menu           Ctrl-K ........... this help',
+        '',
+        'Bold and underline apply to what you type next; press the key again',
+        'to turn them off. Printing to a .txt file keeps the text only.',
         '',
         'Text wraps automatically. The bottom line shows the line, column,',
         'cursor mode, word count and the direction of the current paragraph.',
@@ -1449,6 +1485,10 @@ class WPDoc(Doc):
         super().__init__(app, name, path)
         self.paras = ['']
         self.dirs = [self.default_dir()]
+        # per-character style, one digit per character: 0 plain, 1 bold,
+        # 2 underline, 3 both
+        self.sty = ['']
+        self.style = 0
         self.pi = self.ci = self.top = 0
         self.goal = None
         self.insert = True
@@ -1466,10 +1506,18 @@ class WPDoc(Doc):
         n = len(self.paras)
         if len(self.dirs) != n:
             self.dirs = (self.dirs + [self.default_dir()] * n)[:n]
+        if len(self.sty) != n:
+            self.sty = (self.sty + [''] * n)[:n]
+        for i, p in enumerate(self.paras):
+            if len(self.sty[i]) != len(p):
+                self.sty[i] = (self.sty[i] + '0' * len(p))[:len(p)]
 
     def to_json(self):
         self.fix_dirs()
-        return {'paras': self.paras, 'dirs': ''.join(self.dirs)}
+        data = {'paras': self.paras, 'dirs': ''.join(self.dirs)}
+        if any(st.strip('0') for st in self.sty):
+            data['styles'] = self.sty
+        return data
 
     def size(self):
         return sum(len(p) + 1 for p in self.paras)
@@ -1481,6 +1529,12 @@ class WPDoc(Doc):
             self.dirs = list(dirs)
         else:
             self.detect_dirs()
+        sty = d.get('styles')
+        self.sty = [''] * len(self.paras)
+        if isinstance(sty, list) and len(sty) == len(self.paras):
+            self.sty = [st if isinstance(st, str) and set(st) <= set('0123') else ''
+                        for st in sty]
+        self.fix_dirs()
 
     def geometry(self):
         H, W = self.app.scr.getmaxyx()
@@ -1516,7 +1570,9 @@ class WPDoc(Doc):
         words = sum(len(p.split()) for p in self.paras)
         rtl = self.dirs[self.pi] == 'R'
         a.frame(self.title(), 'REVIEW/ADD/CHANGE', 'Escape: Main Menu', 'Ctrl-K: Help',
-                '   '.join([T('Insert' if self.insert else 'Overwrite'),
+                '   '.join([T('Insert' if self.insert else 'Overwrite')] +
+                           ([T('Bold')] if self.style & 1 else []) +
+                           ([T('Underline')] if self.style & 2 else []) + [
                             T('Right-to-left' if rtl else 'Left-to-right'),
                             T('Line {a} of {b}', a=cr + 1, b=len(rows)),
                             T('Column {n}', n=col + 1),
@@ -1531,13 +1587,30 @@ class WPDoc(Doc):
             if r >= len(rows):
                 break
             pi, s, e, last = rows[r]
-            a.put(2 + i, self.row_x(rows[r], ww, x0), self.paras[pi][s:e].rstrip(' '))
+            text = self.paras[pi][s:e].rstrip(' ')
+            self.put_styled(2 + i, self.row_x(rows[r], ww, x0), text, self.sty[pi][s:s + len(text)])
         cursor(1 if self.insert else 2)
         try:
             cx = self.row_x(rows[cr], ww, x0) + col
             a.scr.move(2 + cr - self.top, max(0, min(W - 1, cx)))
         except curses.error:
             pass
+
+    def put_styled(self, y, x, text, sty):
+        a = self.app
+        i = 0
+        while i < len(text):
+            j = i
+            while j < len(text) and sty[j:j + 1] == sty[i:i + 1]:
+                j += 1
+            code = int(sty[i]) if sty[i:i + 1].isdigit() else 0
+            attr = a.A_N
+            if code & 1:
+                attr |= curses.A_BOLD
+            if code & 2:
+                attr |= curses.A_UNDERLINE
+            a.put(y, x + i, text[i:j], attr)
+            i = j
 
     def row_x(self, row, ww, x0):
         """Screen column where a wrapped row starts: the left margin, or for a
@@ -1550,16 +1623,22 @@ class WPDoc(Doc):
     def handle(self, k):
         a = self.app
         H, W, ww, x0 = self.geometry()
+        self.fix_dirs()
         p = self.paras[self.pi]
+        st = self.sty[self.pi]
         if k not in ('UP', 'DOWN', 'PGUP', 'PGDN'):
             self.goal = None
         if len(k) == 1 or k == 'TAB':
             s = k if len(k) == 1 else '    '
+            code = str(self.style) * len(s)
             if self.insert or self.ci >= len(p):
                 p = p[:self.ci] + s + p[self.ci:]
+                st = st[:self.ci] + code + st[self.ci:]
             else:
                 p = p[:self.ci] + s + p[self.ci + len(s):]
+                st = st[:self.ci] + code + st[self.ci + len(s):]
             self.paras[self.pi] = p
+            self.sty[self.pi] = st
             self.ci += len(s)
             self.dirty = True
         elif k == 'ENTER':
@@ -1567,30 +1646,38 @@ class WPDoc(Doc):
             self.paras[self.pi] = p[:self.ci]
             self.paras.insert(self.pi + 1, p[self.ci:])
             self.dirs.insert(self.pi + 1, self.dirs[self.pi])
+            self.sty[self.pi] = st[:self.ci]
+            self.sty.insert(self.pi + 1, st[self.ci:])
             self.pi += 1
             self.ci = 0
             self.dirty = True
         elif k == 'BKSP':
             if self.ci > 0:
                 self.paras[self.pi] = p[:self.ci - 1] + p[self.ci:]
+                self.sty[self.pi] = st[:self.ci - 1] + st[self.ci:]
                 self.ci -= 1
                 self.dirty = True
             elif self.pi > 0:
                 prev = self.paras[self.pi - 1]
                 self.ci = len(prev)
                 self.paras[self.pi - 1] = prev + p
+                self.sty[self.pi - 1] += st
                 del self.paras[self.pi]
                 del self.dirs[self.pi]
+                del self.sty[self.pi]
                 self.pi -= 1
                 self.dirty = True
         elif k in ('DEL', 'C-D'):
             if self.ci < len(p):
                 self.paras[self.pi] = p[:self.ci] + p[self.ci + 1:]
+                self.sty[self.pi] = st[:self.ci] + st[self.ci + 1:]
                 self.dirty = True
             elif self.pi < len(self.paras) - 1:
                 self.paras[self.pi] = p + self.paras[self.pi + 1]
+                self.sty[self.pi] = st + self.sty[self.pi + 1]
                 del self.paras[self.pi + 1]
                 del self.dirs[self.pi + 1]
+                del self.sty[self.pi + 1]
                 self.dirty = True
         elif k == 'LEFT':
             if self.ci > 0:
@@ -1625,7 +1712,7 @@ class WPDoc(Doc):
                 self.ci = min(s + self.goal, mx)
         elif k == 'C-T':
             self.pi = self.ci = 0
-        elif k == 'C-B':
+        elif k == 'C-G':
             self.pi = len(self.paras) - 1
             self.ci = len(self.paras[-1])
         elif k == 'C-E':
@@ -1633,20 +1720,23 @@ class WPDoc(Doc):
         elif k == 'C-Y':
             if self.ci < len(p):
                 self.paras[self.pi] = p[:self.ci]
+                self.sty[self.pi] = st[:self.ci]
                 self.dirty = True
         elif k == 'C-X':
-            a.clip_wp, a.clip_wp_dirs = [p], [self.dirs[self.pi]]
+            a.clip_wp, a.clip_wp_dirs, a.clip_wp_sty = [p], [self.dirs[self.pi]], [st]
             if len(self.paras) > 1:
                 del self.paras[self.pi]
                 del self.dirs[self.pi]
+                del self.sty[self.pi]
                 self.pi = min(self.pi, len(self.paras) - 1)
             else:
                 self.paras = ['']
+                self.sty = ['']
             self.ci = 0
             self.dirty = True
             a.msg = 'Paragraph cut to the clipboard.'
         elif k == 'C-C':
-            a.clip_wp, a.clip_wp_dirs = [p], [self.dirs[self.pi]]
+            a.clip_wp, a.clip_wp_dirs, a.clip_wp_sty = [p], [self.dirs[self.pi]], [st]
             a.msg = 'Paragraph copied to the clipboard.'
         elif k == 'C-V':
             if not a.clip_wp:
@@ -1656,9 +1746,18 @@ class WPDoc(Doc):
                 self.paras[self.pi:self.pi] = list(a.clip_wp)
                 dirs = (list(a.clip_wp_dirs) + [self.default_dir()] * len(a.clip_wp))
                 self.dirs[self.pi:self.pi] = dirs[:len(a.clip_wp)]
+                stys = list(a.clip_wp_sty) + [''] * len(a.clip_wp)
+                self.sty[self.pi:self.pi] = stys[:len(a.clip_wp)]
+                self.fix_dirs()
                 self.pi += len(a.clip_wp)
                 self.dirty = True
                 a.msg = 'Pasted above the cursor.'
+        elif k == 'C-B':
+            self.style ^= 1
+            a.msg = 'Bold on.' if self.style & 1 else 'Bold off.'
+        elif k == 'C-U':
+            self.style ^= 2
+            a.msg = 'Underline on.' if self.style & 2 else 'Underline off.'
         elif k == 'C-L':
             self.dirs[self.pi] = 'L' if self.dirs[self.pi] == 'R' else 'R'
             self.dirty = True
@@ -1705,11 +1804,18 @@ class WPDoc(Doc):
             return
         total = 0
         rx = re.compile(re.escape(q), re.I)
+        self.fix_dirs()
         for i, p in enumerate(self.paras):
-            new, n = rx.subn(lambda m: r, p)
-            if n:
-                self.paras[i] = new
-                total += n
+            st = self.sty[i]
+            out, ost, last = [], [], 0
+            for m in rx.finditer(p):
+                out.append(p[last:m.start()] + r)
+                ost.append(st[last:m.start()] + st[m.start()] * len(r))
+                last = m.end()
+                total += 1
+            if out:
+                self.paras[i] = ''.join(out) + p[last:]
+                self.sty[i] = ''.join(ost) + st[last:]
         self.ci = min(self.ci, len(self.paras[self.pi]))
         if total:
             self.dirty = True
@@ -2631,6 +2737,12 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
     'Deleted {file}': 'הקובץ {file} נמחק',
     'Could not delete: {err}': 'המחיקה נכשלה: {err}',
     'Language': 'שפה',
+    'Memory size': 'גודל הזיכרון',
+    'Memory Size': 'גודל הזיכרון',
+    'How much memory does this computer have?': 'כמה זיכרון יש במחשב הזה?',
+    '{n}K for the Desktop': '{n}K ל-Desktop',
+    'Memory: {name}  ({n}K available)': 'זיכרון: {name}  ({n}K פנויים)',
+    'The Desktop memory is full. Remove a file or add memory.': 'זיכרון ה-Desktop מלא. הסר קובץ או הוסף זיכרון.',
     'Choose the language for menus and messages:': 'בחר את שפת התפריטים וההודעות:',
     'Language: {name}': 'שפה: {name}',
 
@@ -2655,6 +2767,12 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
     'Pasted above the cursor.': 'הודבק מעל הסמן.',
     'Paragraph is now right-to-left.': 'הפסקה עכשיו מימין לשמאל.',
     'Paragraph is now left-to-right.': 'הפסקה עכשיו משמאל לימין.',
+    'Bold': 'הדגשה',
+    'Underline': 'קו תחתון',
+    'Bold on.': 'הדגשה פועלת.',
+    'Bold off.': 'הדגשה כבויה.',
+    'Underline on.': 'קו תחתון פועל.',
+    'Underline off.': 'קו תחתון כבוי.',
     'Find: ': 'חיפוש: ',
     '"{text}" was not found.': '"{text}" לא נמצא.',
     'Replace: ': 'החלפה של: ',
@@ -2755,7 +2873,7 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
         'פקודות מעבד התמלילים      (Ctrl מחליף את מקש ה-Open-Apple)',
         '',
         'Arrows        הזזת הסמן',
-        'Ctrl-T/B      תחילת / סוף המסמך',
+        'Ctrl-T/G      תחילת / סוף המסמך',
         'PgUp/PgDn     עמוד למעלה / למטה',
         'Home/End      תחילת / סוף השורה',
         'Return        פסקה חדשה',
@@ -2769,10 +2887,15 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
         'Ctrl-F        חיפוש (שוב)',
         'Ctrl-R        החלפת הכול',
         'Ctrl-L        כיוון הפסקה: ימין לשמאל / שמאל לימין',
+        'Ctrl-B        הדגשה (Bold) פועלת / כבויה',
+        'Ctrl-U        קו תחתון פועל / כבוי',
         'Ctrl-P        "הדפסה" לקובץ טקסט (76 עמודות)',
         'Ctrl-S        שמירה',
         'Ctrl-Q        מעבר מהיר לקובץ אחר',
         'Escape        תפריט ראשי',
+        '',
+        'הדגשה וקו תחתון חלים על מה שמקלידים מעכשיו; לחיצה נוספת מכבה.',
+        'הדפסה לקובץ טקסט שומרת את הטקסט בלבד.',
         '',
         'פסקה מימין לשמאל מיושרת לשוליים הימניים. פסקה חדשה מקבלת',
         'את הכיוון של הפסקה שבה לחצת Return. השורה התחתונה מציגה',
@@ -2843,6 +2966,9 @@ def run(scr, args):
     curses.raw()
     scr.keypad(True)
     app = App(scr, args.folder, args.theme)
+    mem = load_config().get('memory')
+    if mem in [kb for _, kb in MEMORY_SIZES]:
+        app.mem_kb = mem
     for p in args.files:
         try:
             if len(app.desktop) < MAX_DESKTOP:

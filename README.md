@@ -4,7 +4,7 @@ An integrated **Word Processor, Data Base and Spreadsheet** in the style of the
 80‑column, green‑screen productivity software of the Apple ][ years, rebuilt
 for today's Mac and Windows terminal.
 
-The whole program is a **single Python file (~2,900 lines)** that uses only the
+The whole program is a **single Python file (~3,000 lines)** that uses only the
 Python standard library.
 
 ![Main Menu](screenshots/main-menu.png)
@@ -16,8 +16,9 @@ Python standard library.
 - **Desktop & stacked menus.** Up to 12 open files. Each sub-menu opens on top of
   the last like a folder tab, and Escape steps back one layer. Ctrl‑Q
   (Quick Change) jumps straight to another file.
-- **Word Processor.** Word wrap, insert/overwrite, find & replace,
-  cut/copy/paste paragraphs, "print" to a .txt file, import a text file.
+- **Word Processor.** Word wrap, insert/overwrite, **bold** (Ctrl‑B) and
+  underline (Ctrl‑U), find & replace, cut/copy/paste paragraphs, "print" to a
+  .txt file, import a text file.
 - **Spreadsheet.** Formulas like `+A1*B1` and `@SUM(A1...A10)`, about 20
   functions (`@AVG @MIN @MAX @ROUND @IF @SQRT`…), relative and absolute (`$A$1`)
   references, replicate, insert/delete rows, CSV import and export.
@@ -29,6 +30,10 @@ Python standard library.
   current paragraph between left-to-right and right-to-left. Right-to-left
   paragraphs line up with the right margin. Letter order and fonts are left to
   the terminal.
+
+- **Memory size.** Under *Other Activities → Memory size* pick an
+  Apple //e with 128K or a RamWorks III card with 512K, 1 MB or 3 MB. The
+  "K Avail." counter and the Desktop limit follow your choice.
 
 ### Adding a language
 
