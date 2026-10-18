@@ -26,6 +26,7 @@ import os
 import re
 import sys
 import textwrap
+import unicodedata
 
 VERSION = '1.0'
 EXT = {'wp': '.rwp', 'db': '.rdb', 'ss': '.rss'}
@@ -35,6 +36,90 @@ MAX_DESKTOP = 12
 COLS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 MAXROW = 999
 MIN_H, MIN_W = 24, 80
+
+
+# --------------------------------------------------------------------------
+# languages
+#
+# Every piece of text the user sees goes through T().  A language is a
+# dictionary that maps the English text to its translation; anything that
+# is missing simply stays in English.  Hebrew is built in (bottom of this
+# file).  More languages can be added without touching the program: put a
+# file such as  languages/fr.json  next to retroworks.py containing
+#   {"name": "Français", "strings": {"Main Menu": "Menu principal", ...}}
+# --------------------------------------------------------------------------
+
+LANG = 'en'
+LANGUAGES = {'en': {'name': 'English', 'strings': {}, 'help': {}}}
+CONFIG_PATH = os.path.expanduser('~/.retroworks.json')
+
+
+def T(_s, **kw):
+    tr = LANGUAGES.get(LANG, LANGUAGES['en'])['strings'].get(_s, _s)
+    if not kw:
+        return tr
+    try:
+        return tr.format(**kw)
+    except (KeyError, IndexError, ValueError):
+        return _s.format(**kw)
+
+
+def help_text(key, english):
+    return LANGUAGES.get(LANG, LANGUAGES['en']).get('help', {}).get(key) or english
+
+
+def load_config():
+    try:
+        with open(CONFIG_PATH, encoding='utf-8') as f:
+            cfg = json.load(f)
+        return cfg if isinstance(cfg, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_config(cfg):
+    try:
+        with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=1)
+    except OSError:
+        pass
+
+
+def load_language_files():
+    folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'languages')
+    try:
+        names = sorted(os.listdir(folder))
+    except OSError:
+        return
+    for fn in names:
+        if not fn.endswith('.json'):
+            continue
+        try:
+            with open(os.path.join(folder, fn), encoding='utf-8') as f:
+                data = json.load(f)
+            code = fn[:-5]
+            LANGUAGES[code] = {'name': str(data.get('name', code)),
+                               'strings': dict(data.get('strings', {})),
+                               'help': dict(data.get('help', {}))}
+        except (OSError, ValueError, TypeError, AttributeError):
+            pass
+
+
+def set_language(code):
+    global LANG
+    LANG = code if code in LANGUAGES else 'en'
+
+
+def first_strong(s):
+    """'R' if the first letter of s is right-to-left (Hebrew, Arabic...),
+    'L' if it is left-to-right, None if s has no letters."""
+    for ch in s:
+        b = unicodedata.bidirectional(ch)
+        if b in ('R', 'AL'):
+            return 'R'
+        if b == 'L':
+            return 'L'
+    return None
 
 
 # --------------------------------------------------------------------------
@@ -375,6 +460,7 @@ class App:
         self.current = None
         self.msg = ''
         self.clip_wp = []
+        self.clip_wp_dirs = []
         self.clip_ss = None
         self.clip_db = None
         self._colors(theme)
@@ -420,6 +506,7 @@ class App:
             pass
 
     def frame(self, left, center='', right='Escape: Main Menu', foot='', foot_r=''):
+        center, right = T(center), T(right)
         self.scr.erase()
         H, W = self.scr.getmaxyx()
         room = W - (len(right) + 3 if right else 1)
@@ -433,8 +520,9 @@ class App:
         self.put(1, 0, '=' * W)
         self.put(H - 2, 0, '=' * W)
         if self.msg:
-            self.put(H - 1, 0, self.msg, self.A_B)
+            self.put(H - 1, 0, T(self.msg), self.A_B)
         else:
+            foot, foot_r = T(foot), T(foot_r)
             self.put(H - 1, 0, foot)
             if foot_r:
                 self.put(H - 1, W - len(foot_r) - 1, foot_r)
@@ -443,8 +531,8 @@ class App:
         H, W = self.scr.getmaxyx()
         if H < MIN_H or W < MIN_W:
             self.scr.erase()
-            self.put(0, 0, f'RetroWorks needs at least {MIN_W}x{MIN_H}.')
-            self.put(1, 0, f'This window is {W}x{H}. Please make it larger.')
+            self.put(0, 0, T('RetroWorks needs at least {w}x{h}.', w=MIN_W, h=MIN_H))
+            self.put(1, 0, T('This window is {w}x{h}. Please make it larger.', w=W, h=H))
             cursor(0)
             self.scr.refresh()
             return True
@@ -537,6 +625,7 @@ class App:
                 pos += 1
 
     def ask(self, label, initial=''):
+        label = T(label)
         H, W = self.scr.getmaxyx()
         self.put(H - 1, 0, ' ' * (W - 1))
         text, k = self.line_edit(H - 1, 0, W - len(label) - 2, initial, label=label)
@@ -547,13 +636,15 @@ class App:
         """True / False, or None when Escape is pressed."""
         H, W = self.scr.getmaxyx()
         self.put(H - 1, 0, ' ' * (W - 1))
-        self.put(H - 1, 0, f'{question}  (Y/N) [{"Y" if default else "N"}]', self.A_B)
+        yes, no = T('Y'), T('N')
+        self.put(H - 1, 0, f'{T(question)}  ({yes}/{no}) [{yes if default else no}]', self.A_B)
         cursor(0)
         while True:
             k = self.key()
-            if k in ('y', 'Y'):
+            # also accept the Y/N keys while a Hebrew keyboard is active
+            if k in ('y', 'Y', yes, '\u05d8'):
                 return True
-            if k in ('n', 'N'):
+            if k in ('n', 'N', no, '\u05de'):
                 return False
             if k == 'ENTER':
                 return default
@@ -595,27 +686,27 @@ class App:
         hline(H - 2, 0, W - 1)
         geom = None
         for d, title in enumerate(path):
-            L, T, B, R = self.layer_geom(d)
-            tabr = min(max(L + 27, L + 6 + len(title) + 3), R - 2)
-            clear(T - 1, L, tabr)
-            clear(T, L, tabr)
-            for y in range(T + 1, B + 1):
+            L, Tr, B, R = self.layer_geom(d)
+            tabr = min(max(L + 27, L + 6 + len(T(title)) + 3), R - 2)
+            clear(Tr - 1, L, tabr)
+            clear(Tr, L, tabr)
+            for y in range(Tr + 1, B + 1):
                 clear(y, L, R)
-            hline(T - 1, L + 1, tabr - 1)
-            grid[T][L] = '|'
-            for j, ch in enumerate(title[:tabr - L - 7]):
-                grid[T][L + 6 + j] = ch
-            grid[T][tabr] = '|'
-            hline(T, tabr + 1, R - 1, keep=True)
-            for y in range(T + 1, B + 1):
+            hline(Tr - 1, L + 1, tabr - 1)
+            grid[Tr][L] = '|'
+            for j, ch in enumerate(T(title)[:tabr - L - 7]):
+                grid[Tr][L + 6 + j] = ch
+            grid[Tr][tabr] = '|'
+            hline(Tr, tabr + 1, R - 1, keep=True)
+            for y in range(Tr + 1, B + 1):
                 grid[y][L] = '|'
                 grid[y][R] = '|'
             hline(B, L + 1, R - 1)
-            geom = (L, T, B, R)
+            geom = (L, Tr, B, R)
         for y in range(1, H - 1):
             self.put(y, 0, ''.join(grid[y]))
-        disk = 'Disk: ' + self.short_folder()
-        center = path[-1].upper() if path else ''
+        disk = T('Disk: {disk}', disk=self.short_folder())
+        center = T(path[-1]).upper() if path else ''
         cx = (W - len(center)) // 2
         room = cx - 2 if center else W - len(esc) - 3
         if len(disk) > room:
@@ -623,18 +714,20 @@ class App:
         self.put(0, 0, disk)
         if center:
             self.put(0, cx, center)
+        esc = T(esc)
         if esc:
             self.put(0, W - len(esc) - 1, esc)
         if self.msg:
-            self.put(H - 1, 0, self.msg, self.A_B)
+            self.put(H - 1, 0, T(self.msg), self.A_B)
         else:
+            foot, foot_r = T(foot), T(foot_r)
             self.put(H - 1, 0, foot)
             if foot_r:
                 self.put(H - 1, W - len(foot_r) - 1, foot_r)
         return geom
 
     def default_esc(self, path):
-        return 'Escape: ' + path[-2] if len(path) > 1 else ''
+        return T('Escape: {name}', name=T(path[-2])) if len(path) > 1 else ''
 
     def select(self, path, items, start=0, esc=None, foot_r=None):
         """Menu in a stacked layer. `items` holds strings (numbered choices),
@@ -654,10 +747,10 @@ class App:
                 if self.key() == 'ESC':
                     return None
                 continue
-            fr = foot_r if foot_r is not None else f'{self.avail()}K Avail.'
-            L, T, B, R = self.draw_stack(
+            fr = foot_r if foot_r is not None else T('{n}K Avail.', n=self.avail())
+            L, Tr, B, R = self.draw_stack(
                 path, esc, 'Type number, or use arrows, then press Return', fr)
-            ctop, cbot = T + 3, max(T + 3, B - 1)
+            ctop, cbot = Tr + 3, max(Tr + 3, B - 1)
             vis = cbot - ctop + 1
             cur_line = choice_lines[idx] if n else 0
             if idx == 0:
@@ -677,16 +770,16 @@ class App:
                     continue
                 if isinstance(it, tuple):
                     x = L + 10 if it[0] == 'h' else L + 6
-                    self.put(y, x, it[1][:R - x - 1])
+                    self.put(y, x, T(it[1])[:R - x - 1])
                     continue
                 self.put(y, L + 5, f'{num[li]:>2}.')
-                text = it[:maxw]
+                text = T(it)[:maxw]
                 if li == cur_line:
                     self.put(y, L + 9, ' ' + text + ' ', self.A_R)
                 else:
                     self.put(y, L + 10, text)
             if not n:
-                self.put(ctop, L + 10, '(none)')
+                self.put(ctop, L + 10, T('(none)'))
             if top > 0:
                 self.put(ctop - 1, R - 4, '▲')
             if top + vis < len(items):
@@ -695,7 +788,7 @@ class App:
             if k == 'ESC':
                 return None
             if k in ('C-K', 'F1', '?'):
-                self.show_text('About RetroWorks', ABOUT)
+                self.show_text('About RetroWorks', help_text('about', ABOUT))
                 continue
             if not n or k is None:
                 continue
@@ -726,11 +819,11 @@ class App:
     def box_prompt(self, path, label, initial='', width=30, esc=None):
         if esc is None:
             esc = self.default_esc(path) or 'Escape: Cancel'
-        L, T, B, R = self.draw_stack(path, esc, 'Type entry, then press Return.   Escape cancels',
-                                     f'{self.avail()}K Avail.')
-        self.put(T + 3, L + 6, label[:R - L - 8])
+        L, Tr, B, R = self.draw_stack(path, esc, 'Type entry, then press Return.   Escape cancels',
+                                      T('{n}K Avail.', n=self.avail()))
+        self.put(Tr + 3, L + 6, T(label)[:R - L - 8])
         w = max(8, min(width, R - L - 9))
-        text, k = self.line_edit(T + 5, L + 6, w, initial)
+        text, k = self.line_edit(Tr + 5, L + 6, w, initial)
         cursor(0)
         return None if k == 'ESC' else text
 
@@ -745,9 +838,9 @@ class App:
             H, W = self.scr.getmaxyx()
             vh = H - 4
             top = max(0, min(top, len(lines) - vh))
-            self.frame(title, '', 'Escape: Go back',
-                       'Press Escape or Return to continue' +
-                       ('   (arrows scroll)' if len(lines) > vh else ''))
+            self.frame(T(title), '', 'Escape: Go back',
+                       T('Press Escape or Return to continue') +
+                       (T('   (arrows scroll)') if len(lines) > vh else ''))
             for i, line in enumerate(lines[top:top + vh]):
                 self.put(2 + i, 2, line)
             k = self.key()
@@ -763,7 +856,7 @@ class App:
                 top += vh
 
     def doc_label(self, d):
-        return f'{d.name[:24]:<24}  {KIND_NAME[d.kind]:<14}' + ('  *' if d.dirty else '')
+        return f'{d.name[:24]:<24}  {T(KIND_NAME[d.kind]):<14}' + ('  *' if d.dirty else '')
 
     def pick_desktop(self, path, esc=None):
         if not self.desktop:
@@ -771,14 +864,15 @@ class App:
             beep()
             return None
         start = self.desktop.index(self.current) if self.current in self.desktop else 0
-        items = [('h', 'Name'.ljust(26) + 'Type'), None] + \
+        items = [('h', T('Name').ljust(26) + T('Type')), None] + \
             [self.doc_label(d) for d in self.desktop]
         i = self.select(path, items, start, esc=esc)
         return None if i is None else self.desktop[i]
 
     def quick_change(self):
         return self.pick_desktop(['Desktop Index'],
-                                 esc=f'Escape: {self.current.name[:20]}' if self.current else '')
+                                 esc=T('Escape: {name}', name=self.current.name[:20])
+                                 if self.current else '')
 
     # ---- disk -------------------------------------------------------------
     def disk_files(self):
@@ -809,10 +903,10 @@ class App:
     def load_from_disk(self, path):
         files = self.disk_files()
         if not files:
-            self.msg = f'There are no RetroWorks files on {self.short_folder()}'
+            self.msg = T('There are no RetroWorks files on {disk}', disk=self.short_folder())
             beep()
             return None
-        items = [('h', 'Name'.ljust(24) + 'Type Modified'), None] + self.file_items(files)
+        items = [('h', T('Name').ljust(24) + T('Type Modified')), None] + self.file_items(files)
         i = self.select(path + ['Get Files'], items)
         if i is None:
             return None
@@ -824,7 +918,7 @@ class App:
         try:
             d = load_doc(self, fpath)
         except (OSError, ValueError, KeyError, TypeError) as e:
-            self.msg = f'Could not read that file: {e}'
+            self.msg = T('Could not read that file: {err}', err=e)
             beep()
             return None
         self.desktop.append(d)
@@ -846,8 +940,8 @@ class App:
                 continue
             d = cls(self, name)
             if os.path.exists(d.path):
-                ans = self.yesno(f'"{os.path.basename(d.path)}" already exists on disk. '
-                                 'Replace it when you save?')
+                ans = self.yesno(T('"{file}" already exists on disk. Replace it when you save?',
+                                   file=os.path.basename(d.path)))
                 if ans is None:
                     return None
                 if not ans:
@@ -878,7 +972,7 @@ class App:
             with open(fn, encoding='utf-8', errors='replace', newline='') as f:
                 text = f.read()
         except OSError as e:
-            self.msg = f'Could not read the file: {e.strerror or e}'
+            self.msg = T('Could not read that file: {err}', err=e.strerror or e)
             beep()
             return None
         base = os.path.splitext(os.path.basename(fn))[0][:30]
@@ -888,6 +982,7 @@ class App:
         lines = text.splitlines()
         if kind == 'wp':
             d.paras = [clean(l) for l in lines] or ['']
+            d.detect_dirs()
         else:
             rows = [r for r in csv.reader(lines)]
             if not rows:
@@ -895,7 +990,7 @@ class App:
                 beep()
                 return None
             if kind == 'db':
-                d.fields = [clean(x).strip()[:30] or f'Category {i + 1}'
+                d.fields = [clean(x).strip()[:30] or T('Category {n}', n=i + 1)
                             for i, x in enumerate(rows[0][:30])]
                 nf = len(d.fields)
                 d.records = [([clean(v) for v in r] + [''] * nf)[:nf]
@@ -921,17 +1016,17 @@ class App:
         fields = []
         while True:
             H, W = self.scr.getmaxyx()
-            self.frame(f'File: {name}', 'CHANGE NAME/CATEGORY', 'Escape: Cancel')
-            self.put(3, 4, 'Type the names of the categories (fields), one at a time.', self.A_B)
-            self.put(4, 4, 'Press Return on an empty line when you are done.')
+            self.frame(T('File: {name}', name=name), 'CHANGE NAME/CATEGORY', 'Escape: Cancel')
+            self.put(3, 4, T('Type the names of the categories (fields), one at a time.'), self.A_B)
+            self.put(4, 4, T('Press Return on an empty line when you are done.'))
             for j, f in enumerate(fields[-(H - 10):]):
                 self.put(6 + j, 6, f)
-            t = self.ask(f'Category {len(fields) + 1} name: ')
+            t = self.ask(T('Category {n} name: ', n=len(fields) + 1))
             if t is None:
                 return None
             t = clean(t).strip()[:30]
             if not t:
-                return fields or ['Category 1']
+                return fields or [T('Category {n}', n=1)]
             if t in fields:
                 self.msg = 'You already have a category with that name.'
                 beep()
@@ -962,11 +1057,11 @@ class App:
         sel = 0
         while True:
             if len(self.desktop) >= MAX_DESKTOP:
-                self.msg = f'The Desktop is full ({MAX_DESKTOP} files). Remove a file first.'
+                self.msg = T('The Desktop is full ({n} files). Remove a file first.', n=MAX_DESKTOP)
                 beep()
                 return None
             items = [('h', 'Get files from:'), None,
-                     f'The current disk: {self.short_folder()}',
+                     T('The current disk: {disk}', disk=self.short_folder()),
                      'A different disk', None,
                      ('h', 'Make a new file for the:'), None,
                      'Word Processor', 'Data Base', 'Spreadsheet']
@@ -984,7 +1079,7 @@ class App:
                     continue
                 t = os.path.abspath(os.path.expanduser(t.strip()))
                 if not os.path.isdir(t):
-                    self.msg = f'There is no folder called {t}'
+                    self.msg = T('There is no folder called {path}', path=t)
                     beep()
                     continue
                 self.folder = t
@@ -1009,20 +1104,20 @@ class App:
             return
         ok = all([d.do_save() for d in targets])
         if ok and len(targets) > 1:
-            self.msg = f'Saved {len(targets)} files to {self.short_folder()}'
+            self.msg = T('Saved {n} files to {disk}', n=len(targets), disk=self.short_folder())
 
     def remove_menu(self):
         d = self.pick_desktop(['Main Menu', 'Remove Files'])
         if d is None:
             return
         if d.dirty:
-            ans = self.yesno(f'"{d.name}" has changes. Save it before removing?', True)
+            ans = self.yesno(T('"{name}" has changes. Save it before removing?', name=d.name), True)
             if ans is None or (ans and not d.do_save()):
                 return
         self.desktop.remove(d)
         if self.current is d:
             self.current = None
-        self.msg = f'"{d.name}" removed from the Desktop.'
+        self.msg = T('"{name}" removed from the Desktop.', name=d.name)
 
     def other(self):
         P = ['Main Menu', 'Other Activities']
@@ -1030,6 +1125,7 @@ class App:
         while True:
             i = self.select(P, spaced(['Change current disk',
                                        'Delete files from disk',
+                                       'Choose language  (Language / שפה)',
                                        'About RetroWorks']), sel)
             if i is None:
                 return
@@ -1041,22 +1137,22 @@ class App:
                 if t and t.strip():
                     t = os.path.abspath(os.path.expanduser(t.strip()))
                     if not os.path.isdir(t):
-                        if not self.yesno(f'"{t}" does not exist. Create it?', True):
+                        if not self.yesno(T('"{path}" does not exist. Create it?', path=t), True):
                             continue
                         try:
                             os.makedirs(t)
                         except OSError as e:
-                            self.msg = f'Could not create folder: {e}'
+                            self.msg = T('Could not create folder: {err}', err=e)
                             beep()
                             continue
                     self.folder = t
-                    self.msg = f'Current disk is now {self.short_folder()}'
+                    self.msg = T('Current disk is now {disk}', disk=self.short_folder())
             elif i == 1:
                 files = self.disk_files()
                 if not files:
-                    self.msg = f'There are no RetroWorks files on {self.short_folder()}'
+                    self.msg = T('There are no RetroWorks files on {disk}', disk=self.short_folder())
                     continue
-                items = [('h', 'Name'.ljust(24) + 'Type Modified'), None] + \
+                items = [('h', T('Name').ljust(24) + T('Type Modified')), None] + \
                     self.file_items(files)
                 j = self.select(P + ['Delete Files'], items)
                 if j is None:
@@ -1066,22 +1162,38 @@ class App:
                     self.msg = 'That file is on the Desktop. Remove it from the Desktop first.'
                     beep()
                     continue
-                if self.yesno(f'Permanently delete "{files[j][0]}" from the disk?'):
+                if self.yesno(T('Permanently delete "{file}" from the disk?', file=files[j][0])):
                     try:
                         os.remove(fpath)
-                        self.msg = f'Deleted {files[j][0]}'
+                        self.msg = T('Deleted {file}', file=files[j][0])
                     except OSError as e:
-                        self.msg = f'Could not delete: {e}'
+                        self.msg = T('Could not delete: {err}', err=e)
                         beep()
             elif i == 2:
-                self.show_text('About RetroWorks', ABOUT)
+                self.language_menu(P)
+            elif i == 3:
+                self.show_text('About RetroWorks', help_text('about', ABOUT))
+
+    def language_menu(self, path):
+        codes = sorted(LANGUAGES, key=lambda c: (c != 'en', LANGUAGES[c]['name'].lower()))
+        items = [('h', 'Choose the language for menus and messages:'), None]
+        items += [f"{LANGUAGES[c]['name']:<20}{'  *' if c == LANG else ''}" for c in codes]
+        i = self.select(path + ['Language'], items,
+                        codes.index(LANG) if LANG in codes else 0)
+        if i is None:
+            return
+        set_language(codes[i])
+        cfg = load_config()
+        cfg['language'] = LANG
+        save_config(cfg)
+        self.msg = T('Language: {name}', name=LANGUAGES[LANG]['name'])
 
     def quit(self):
         had_changes = False
         for d in list(self.desktop):
             if d.dirty:
                 had_changes = True
-                ans = self.yesno(f'Save changes to "{d.name}" before quitting?', True)
+                ans = self.yesno(T('Save changes to "{name}" before quitting?', name=d.name), True)
                 if ans is None:
                     return False
                 if ans and not d.do_save():
@@ -1113,18 +1225,20 @@ class App:
                 self.put(y + j, x, '║' + ' ' * (bw - 2) + '║', self.A_B)
             self.put(y + 6, x, '╚' + '═' * (bw - 2) + '╝', self.A_B)
             t1 = 'R E T R O W O R K S   ] ['
-            t2 = 'Word Processor  ·  Data Base  ·  Spreadsheet'
+            t2 = T('Word Processor  ·  Data Base  ·  Spreadsheet')
             self.put(y + 2, x + (bw - len(t1)) // 2, t1, self.A_B)
             self.put(y + 4, x + (bw - len(t2)) // 2, t2)
+            today = datetime.date.today()
+            date = today.strftime('%A, %d %B %Y') if LANG == 'en' else today.strftime('%d/%m/%Y')
             lines = [
-                f'Version {VERSION}',
-                'An original tribute to the integrated software of the 1980s.',
-                'Not affiliated with or endorsed by Apple Inc.',
+                T('Version {v}', v=VERSION),
+                T('An original tribute to the integrated software of the 1980s.'),
+                T('Not affiliated with or endorsed by Apple Inc.'),
                 '',
-                datetime.date.today().strftime("Today's date: %A, %d %B %Y"),
+                T("Today's date: {date}", date=date),
                 '',
-                'Ctrl takes the place of the Open-Apple key.',
-                'Press Return to continue',
+                T('Ctrl takes the place of the Open-Apple key.'),
+                T('Press Return to continue'),
             ]
             for j, line in enumerate(lines):
                 self.put(y + 8 + j, (W - len(line)) // 2, line,
@@ -1144,7 +1258,8 @@ class App:
         if self.desktop:
             self.work(self.desktop[0])
         while True:
-            esc = f'Escape: {self.current.name[:20]}' if self.current in self.desktop else ''
+            esc = T('Escape: {name}', name=self.current.name[:20]) \
+                if self.current in self.desktop else ''
             i = self.select(['Main Menu'], items, sel, esc=esc)
             if i is None:
                 if self.current in self.desktop:
@@ -1216,7 +1331,7 @@ class Doc:
         self.dirty = False
 
     def title(self):
-        return f'File: {self.name}' + (' *' if self.dirty else '')
+        return T('File: {name}', name=self.name) + (' *' if self.dirty else '')
 
     def to_json(self):
         return {}
@@ -1239,10 +1354,11 @@ class Doc:
     def do_save(self):
         try:
             self.save()
-            self.app.msg = f'Saved "{self.name}" to {os.path.basename(self.path)}'
+            self.app.msg = T('Saved "{name}" to {file}', name=self.name,
+                             file=os.path.basename(self.path))
             return True
         except OSError as e:
-            self.app.msg = f'Could not save: {e}'
+            self.app.msg = T('Could not save: {err}', err=e)
             beep()
             return False
 
@@ -1269,7 +1385,8 @@ class Doc:
                 self.do_save()
                 continue
             if k in ('C-K', 'F1'):
-                a.show_text(f'{KIND_NAME[self.kind]} Help', self.HELP)
+                a.show_text(T('{kind} Help', kind=T(KIND_NAME[self.kind])),
+                            help_text(self.kind, self.HELP))
                 continue
             self.handle(k)
 
@@ -1281,7 +1398,7 @@ class Doc:
 
     def export_path(self, ext, label):
         default = os.path.join(self.app.folder, safe_name(self.name) + ext)
-        fn = self.app.ask(label, default)
+        fn = self.app.ask(T(label), default)
         if not fn or not fn.strip():
             return None
         return os.path.abspath(os.path.expanduser(fn.strip()))
@@ -1317,30 +1434,53 @@ class WPDoc(Doc):
         '',
         'Ctrl-F ............ find (again)        Ctrl-R ........... replace all',
         'Ctrl-P ............ "print" to a plain .txt file (76 columns)',
+        'Ctrl-L ............ paragraph direction: left-to-right / right-to-left',
         '',
         'Ctrl-S ............ save                Ctrl-Q ........... quick change',
         'Escape ............ Main Menu           Ctrl-K ........... this help',
         '',
         'Text wraps automatically. The bottom line shows the line, column,',
-        'cursor mode and word count.',
+        'cursor mode, word count and the direction of the current paragraph.',
+        'A right-to-left paragraph is aligned to the right margin; new',
+        'paragraphs keep the direction of the one you pressed Return in.',
     ]
 
     def __init__(self, app, name, path=None):
         super().__init__(app, name, path)
         self.paras = ['']
+        self.dirs = [self.default_dir()]
         self.pi = self.ci = self.top = 0
         self.goal = None
         self.insert = True
         self.last_find = ''
 
+    @staticmethod
+    def default_dir():
+        return 'R' if LANG == 'he' else 'L'
+
+    def detect_dirs(self):
+        """Give each paragraph the direction of its first letter."""
+        self.dirs = [first_strong(p) or self.default_dir() for p in self.paras]
+
+    def fix_dirs(self):
+        n = len(self.paras)
+        if len(self.dirs) != n:
+            self.dirs = (self.dirs + [self.default_dir()] * n)[:n]
+
     def to_json(self):
-        return {'paras': self.paras}
+        self.fix_dirs()
+        return {'paras': self.paras, 'dirs': ''.join(self.dirs)}
 
     def size(self):
         return sum(len(p) + 1 for p in self.paras)
 
     def from_json(self, d):
         self.paras = [clean(p) for p in d.get('paras', [])] or ['']
+        dirs = d.get('dirs')
+        if isinstance(dirs, str) and len(dirs) == len(self.paras) and set(dirs) <= {'L', 'R'}:
+            self.dirs = list(dirs)
+        else:
+            self.detect_dirs()
 
     def geometry(self):
         H, W = self.app.scr.getmaxyx()
@@ -1371,11 +1511,16 @@ class WPDoc(Doc):
         self.top = min(self.top, cr)
         if cr >= self.top + vh:
             self.top = cr - vh + 1
+        self.fix_dirs()
         col = self.ci - rows[cr][1]
         words = sum(len(p.split()) for p in self.paras)
+        rtl = self.dirs[self.pi] == 'R'
         a.frame(self.title(), 'REVIEW/ADD/CHANGE', 'Escape: Main Menu', 'Ctrl-K: Help',
-                f'{"Insert" if self.insert else "Overwrite"}   Line {cr + 1} of {len(rows)}'
-                f'   Column {col + 1}   {words} words')
+                '   '.join([T('Insert' if self.insert else 'Overwrite'),
+                            T('Right-to-left' if rtl else 'Left-to-right'),
+                            T('Line {a} of {b}', a=cr + 1, b=len(rows)),
+                            T('Column {n}', n=col + 1),
+                            T('{n} words', n=words)]))
         ruler = ['='] * W
         for k in range(0, ww + 1, 5):
             if x0 + k < W:
@@ -1386,12 +1531,21 @@ class WPDoc(Doc):
             if r >= len(rows):
                 break
             pi, s, e, last = rows[r]
-            a.put(2 + i, x0, self.paras[pi][s:e])
+            a.put(2 + i, self.row_x(rows[r], ww, x0), self.paras[pi][s:e].rstrip(' '))
         cursor(1 if self.insert else 2)
         try:
-            a.scr.move(2 + cr - self.top, min(W - 1, x0 + col))
+            cx = self.row_x(rows[cr], ww, x0) + col
+            a.scr.move(2 + cr - self.top, max(0, min(W - 1, cx)))
         except curses.error:
             pass
+
+    def row_x(self, row, ww, x0):
+        """Screen column where a wrapped row starts: the left margin, or for a
+        right-to-left paragraph far enough right to end at the right margin."""
+        pi, s, e, last = row
+        if self.dirs[pi] != 'R':
+            return x0
+        return x0 + ww - len(self.paras[pi][s:e].rstrip(' '))
 
     def handle(self, k):
         a = self.app
@@ -1409,8 +1563,10 @@ class WPDoc(Doc):
             self.ci += len(s)
             self.dirty = True
         elif k == 'ENTER':
+            self.fix_dirs()
             self.paras[self.pi] = p[:self.ci]
             self.paras.insert(self.pi + 1, p[self.ci:])
+            self.dirs.insert(self.pi + 1, self.dirs[self.pi])
             self.pi += 1
             self.ci = 0
             self.dirty = True
@@ -1424,6 +1580,7 @@ class WPDoc(Doc):
                 self.ci = len(prev)
                 self.paras[self.pi - 1] = prev + p
                 del self.paras[self.pi]
+                del self.dirs[self.pi]
                 self.pi -= 1
                 self.dirty = True
         elif k in ('DEL', 'C-D'):
@@ -1433,6 +1590,7 @@ class WPDoc(Doc):
             elif self.pi < len(self.paras) - 1:
                 self.paras[self.pi] = p + self.paras[self.pi + 1]
                 del self.paras[self.pi + 1]
+                del self.dirs[self.pi + 1]
                 self.dirty = True
         elif k == 'LEFT':
             if self.ci > 0:
@@ -1477,9 +1635,10 @@ class WPDoc(Doc):
                 self.paras[self.pi] = p[:self.ci]
                 self.dirty = True
         elif k == 'C-X':
-            a.clip_wp = [p]
+            a.clip_wp, a.clip_wp_dirs = [p], [self.dirs[self.pi]]
             if len(self.paras) > 1:
                 del self.paras[self.pi]
+                del self.dirs[self.pi]
                 self.pi = min(self.pi, len(self.paras) - 1)
             else:
                 self.paras = ['']
@@ -1487,7 +1646,7 @@ class WPDoc(Doc):
             self.dirty = True
             a.msg = 'Paragraph cut to the clipboard.'
         elif k == 'C-C':
-            a.clip_wp = [p]
+            a.clip_wp, a.clip_wp_dirs = [p], [self.dirs[self.pi]]
             a.msg = 'Paragraph copied to the clipboard.'
         elif k == 'C-V':
             if not a.clip_wp:
@@ -1495,9 +1654,16 @@ class WPDoc(Doc):
                 beep()
             else:
                 self.paras[self.pi:self.pi] = list(a.clip_wp)
+                dirs = (list(a.clip_wp_dirs) + [self.default_dir()] * len(a.clip_wp))
+                self.dirs[self.pi:self.pi] = dirs[:len(a.clip_wp)]
                 self.pi += len(a.clip_wp)
                 self.dirty = True
                 a.msg = 'Pasted above the cursor.'
+        elif k == 'C-L':
+            self.dirs[self.pi] = 'L' if self.dirs[self.pi] == 'R' else 'R'
+            self.dirty = True
+            a.msg = 'Paragraph is now right-to-left.' if self.dirs[self.pi] == 'R' \
+                else 'Paragraph is now left-to-right.'
         elif k == 'C-F':
             self.find()
         elif k == 'C-R':
@@ -1526,7 +1692,7 @@ class WPDoc(Doc):
             if j >= 0:
                 self.pi, self.ci = pi, j
                 return
-        a.msg = f'"{q}" was not found.'
+        a.msg = T('"{text}" was not found.', text=q)
         beep()
 
     def replace(self):
@@ -1534,7 +1700,7 @@ class WPDoc(Doc):
         q = a.ask('Replace: ', self.last_find)
         if not q:
             return
-        r = a.ask(f'Replace "{q}" with: ')
+        r = a.ask(T('Replace "{text}" with: ', text=q))
         if r is None:
             return
         total = 0
@@ -1547,7 +1713,7 @@ class WPDoc(Doc):
         self.ci = min(self.ci, len(self.paras[self.pi]))
         if total:
             self.dirty = True
-        a.msg = f'Replaced {total} occurrence{"s" if total != 1 else ""}.'
+        a.msg = T('Replaced {n} occurrence(s).', n=total)
 
     def export(self):
         fn = self.export_path('.txt', 'Print to text file: ')
@@ -1559,9 +1725,9 @@ class WPDoc(Doc):
         try:
             with open(fn, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(lines) + '\n')
-            self.app.msg = f'Printed {len(lines)} lines to {os.path.basename(fn)}'
+            self.app.msg = T('Printed {n} lines to {file}', n=len(lines), file=os.path.basename(fn))
         except OSError as e:
-            self.app.msg = f'Could not write file: {e}'
+            self.app.msg = T('Could not write file: {err}', err=e)
             beep()
 
 
@@ -1732,13 +1898,13 @@ class SSDoc(Doc):
                 'Type entry or use Ctrl commands        Ctrl-K: Help')
         a.put(H - 3, 0, '=' * W)
         a.put(H - 2, 0, ' ' * W)
-        kind = '' if not raw else ('(Value) ' if is_value(raw) else '(Label) ')
+        kind = '' if not raw else (T('(Value) ') if is_value(raw) else T('(Label) '))
         a.put(H - 2, 0, f'{ref}: {kind}{raw}'[:W - 22], a.A_B)
         if raw and is_value(raw):
             try:
                 vs = '= ' + fmt_num(self.value(ref), 19)
             except SSError as e:
-                vs = 'ERROR: ' + str(e)
+                vs = T('ERROR: ') + T(str(e))
             a.put(H - 2, max(W - len(vs) - 1, W - 40), vs[:39])
         a.put(2, 0, '    ', a.A_B)
         for c, x in cols:
@@ -1780,7 +1946,7 @@ class SSDoc(Doc):
             try:
                 self.value(ref)
             except SSError as e:
-                self.app.msg = f'{ref}: ERROR - {e}'
+                self.app.msg = T('{ref}: ERROR - {err}', ref=ref, err=T(str(e)))
                 beep()
 
     def edit(self, first):
@@ -1845,12 +2011,12 @@ class SSDoc(Doc):
         elif k == 'C-C':
             if raw:
                 a.clip_ss = (raw, self.r, self.c, 'copy')
-                a.msg = f'{ref} copied.'
+                a.msg = T('{ref} copied.', ref=ref)
         elif k == 'C-X':
             if raw:
                 a.clip_ss = (raw, self.r, self.c, 'cut')
                 self.set_cell(ref, '')
-                a.msg = f'{ref} cut.'
+                a.msg = T('{ref} cut.', ref=ref)
         elif k == 'C-V':
             if not a.clip_ss:
                 a.msg = 'The clipboard is empty.'
@@ -1868,19 +2034,19 @@ class SSDoc(Doc):
                 try:
                     self.c, self.r = split_ref(t.strip().upper().replace('$', ''))
                 except SSError:
-                    a.msg = f'"{t}" is not a cell (try something like C12).'
+                    a.msg = T('"{text}" is not a cell (try something like C12).', text=t)
                     beep()
         elif k == 'C-F':
             self.find()
         elif k == 'C-N':
             self.shift_rows(self.r, +1)
-            a.msg = f'Row {self.r} inserted.'
+            a.msg = T('Row {n} inserted.', n=self.r)
         elif k == 'C-D':
-            if a.yesno(f'Delete row {self.r}?'):
+            if a.yesno(T('Delete row {n}?', n=self.r)):
                 self.shift_rows(self.r, -1)
-                a.msg = f'Row deleted.'
+                a.msg = 'Row deleted.'
         elif k == 'C-W':
-            t = a.ask(f'Width of column {COLS[self.c]} (3-60): ', str(self.width(self.c)))
+            t = a.ask(T('Width of column {col} (3-60): ', col=COLS[self.c]), str(self.width(self.c)))
             if t:
                 try:
                     self.widths[COLS[self.c]] = max(3, min(60, int(t)))
@@ -1901,13 +2067,13 @@ class SSDoc(Doc):
             beep()
             return
         ex = f'{COLS[self.c]}{min(MAXROW, self.r + 9)}'
-        t = a.ask(f'Replicate {ref} through cell (e.g. {ex}): ')
+        t = a.ask(T('Replicate {ref} through cell (e.g. {ex}): ', ref=ref, ex=ex))
         if not t:
             return
         try:
             c2, r2 = split_ref(t.strip().upper().replace('$', ''))
         except SSError:
-            a.msg = f'"{t}" is not a cell.'
+            a.msg = T('"{text}" is not a cell.', text=t)
             beep()
             return
         n = 0
@@ -1921,7 +2087,7 @@ class SSDoc(Doc):
         if n:
             self.dirty = True
         self.cache = {}
-        a.msg = f'Replicated {ref} into {n} cell{"s" if n != 1 else ""}.'
+        a.msg = T('Replicated {ref} into {n} cell(s).', ref=ref, n=n)
 
     def find(self):
         a = self.app
@@ -1933,7 +2099,7 @@ class SSDoc(Doc):
         hits = sorted((split_ref(k)[1], split_ref(k)[0])
                       for k, v in self.cells.items() if ql in v.lower())
         if not hits:
-            a.msg = f'"{q}" was not found.'
+            a.msg = T('"{text}" was not found.', text=q)
             beep()
             return
         nxt = next((h for h in hits if h > (self.r, self.c)), hits[0])
@@ -1965,9 +2131,9 @@ class SSDoc(Doc):
                             v = int(v)
                         row.append(v)
                     w.writerow(row)
-            a.msg = f'Exported {maxr} rows to {os.path.basename(fn)}'
+            a.msg = T('Exported {n} rows to {file}', n=maxr, file=os.path.basename(fn))
         except OSError as e:
-            a.msg = f'Could not write file: {e}'
+            a.msg = T('Could not write file: {err}', err=e)
             beep()
 
 
@@ -2004,7 +2170,7 @@ class DBDoc(Doc):
 
     def __init__(self, app, name, path=None):
         super().__init__(app, name, path)
-        self.fields = ['Category 1']
+        self.fields = [T('Category {n}', n=1)]
         self.records = []
         self.widths = [0]
         self.single = False
@@ -2056,17 +2222,18 @@ class DBDoc(Doc):
         rows = self.rows()
         self.cur = max(0, min(self.cur, len(rows) - 1)) if rows else 0
         self.f = max(0, min(self.f, len(self.fields) - 1))
-        info = f'Record {self.cur + 1 if rows else 0} of {len(rows)}'
+        info = T('Record {a} of {b}', a=self.cur + 1 if rows else 0, b=len(rows))
         if self.filter:
-            info += f'   ({len(self.records)} in file)'
+            info += '   ' + T('({n} in file)', n=len(self.records))
         a.frame(self.title(), 'REVIEW/ADD/CHANGE', 'Escape: Main Menu', 'Ctrl-K: Help', info)
-        sel = 'Selection: ' + (f'records containing "{self.filter}"' if self.filter else 'All records')
+        sel = T('Selection: ') + (T('records containing "{text}"', text=self.filter)
+                                  if self.filter else T('All records'))
         a.put(2, 0, sel)
-        mode = 'Single-record layout' if self.single else 'Multiple-record layout'
+        mode = T('Single-record layout' if self.single else 'Multiple-record layout')
         a.put(2, W - len(mode) - 1, mode)
         if not rows:
-            a.put(5, 4, 'No records match. Press Ctrl-F, then Return, to select all.'
-                  if self.filter else 'No records yet. Press Ctrl-N to add one.', a.A_B)
+            a.put(5, 4, T('No records match. Press Ctrl-F, then Return, to select all.'
+                          if self.filter else 'No records yet. Press Ctrl-N to add one.'), a.A_B)
             cursor(0)
             return
         if self.single:
@@ -2224,7 +2391,7 @@ class DBDoc(Doc):
         elif k == 'C-N':
             self.new_record()
         elif k == 'C-D':
-            if rows and a.yesno(f'Delete record {self.cur + 1}?'):
+            if rows and a.yesno(T('Delete record {n}?', n=self.cur + 1)):
                 del self.records[rows[self.cur]]
                 self.dirty = True
                 a.msg = 'Record deleted.'
@@ -2235,13 +2402,13 @@ class DBDoc(Doc):
             if t is not None:
                 self.filter = t.strip()
                 self.cur = self.top = 0
-                a.msg = f'{len(self.rows())} record(s) selected.'
+                a.msg = T('{n} record(s) selected.', n=len(self.rows()))
         elif k == 'C-A':
             self.arrange()
         elif k == 'C-E':
             self.categories()
         elif k == 'C-W':
-            t = a.ask(f'Width of "{self.fields[self.f]}" (3-60): ', str(self.w(self.f)))
+            t = a.ask(T('Width of "{name}" (3-60): ', name=self.fields[self.f]), str(self.w(self.f)))
             if t:
                 try:
                     self.pad_widths()
@@ -2283,13 +2450,13 @@ class DBDoc(Doc):
         self.records = full + empty
         self.cur = self.top = 0
         self.dirty = True
-        self.app.msg = f'Arranged by "{self.fields[fi]}" ' + \
-            ('(9 to 0, Z to A).' if desc else '(0 to 9, A to Z).')
+        self.app.msg = T('Arranged by "{name}" ', name=self.fields[fi]) + \
+            T('(9 to 0, Z to A).' if desc else '(0 to 9, A to Z).')
 
     def categories(self):
         a = self.app
         name = self.fields[self.f]
-        i = a.select([f'Category: {name}'], [
+        i = a.select([T('Category: {name}', name=name)], [
             'Rename this category',
             'Insert a new category after this one',
             'Delete this category',
@@ -2317,7 +2484,7 @@ class DBDoc(Doc):
             if len(self.fields) == 1:
                 a.msg = 'A data base needs at least one category.'
                 beep()
-            elif a.yesno(f'Delete category "{name}" and everything in it?'):
+            elif a.yesno(T('Delete category "{name}" and everything in it?', name=name)):
                 del self.fields[self.f]
                 del self.widths[self.f]
                 for rec in self.records:
@@ -2344,10 +2511,324 @@ class DBDoc(Doc):
                 w.writerow(self.fields)
                 for i in rows:
                     w.writerow(self.records[i])
-            a.msg = f'Exported {len(rows)} records to {os.path.basename(fn)}'
+            a.msg = T('Exported {n} records to {file}', n=len(rows), file=os.path.basename(fn))
         except OSError as e:
-            a.msg = f'Could not write file: {e}'
+            a.msg = T('Could not write file: {err}', err=e)
             beep()
+
+
+# --------------------------------------------------------------------------
+# Hebrew  (עברית)
+# --------------------------------------------------------------------------
+
+LANGUAGES['he'] = {'name': 'עברית', 'strings': {
+    # general
+    'Y': 'כ', 'N': 'ל',
+    'Escape: Main Menu': 'Escape: תפריט ראשי',
+    'Escape: {name}': 'Escape: {name}',
+    'Escape: Cancel': 'Escape: ביטול',
+    'Escape: Go back': 'Escape: חזרה',
+    'Escape: Review/Add/Change': 'Escape: חזרה לקובץ',
+    'RetroWorks needs at least {w}x{h}.': 'RetroWorks צריכה חלון של {w}x{h} לפחות.',
+    'This window is {w}x{h}. Please make it larger.': 'החלון הנוכחי הוא {w}x{h}. נא להגדיל אותו.',
+    'Disk: {disk}': 'דיסק: {disk}',
+    'Ctrl-K for Help': 'Ctrl-K לעזרה',
+    '{n}K Avail.': '{n}K פנויים',
+    'Type number, or use arrows, then press Return': 'הקלד מספר או השתמש בחצים, ואז לחץ Return',
+    'Type entry, then press Return.   Escape cancels': 'הקלד ולחץ Return.   Escape לביטול',
+    'Press Escape or Return to continue': 'לחץ Escape או Return להמשך',
+    '   (arrows scroll)': '   (החצים גוללים)',
+    '(none)': '(אין)',
+    'Name': 'שם',
+    'Type': 'סוג',
+    'Type Modified': 'סוג שינוי אחרון',
+    'Word Processor': 'מעבד תמלילים',
+    'Data Base': 'מסד נתונים',
+    'Spreadsheet': 'גיליון אלקטרוני',
+    'Word Processor  ·  Data Base  ·  Spreadsheet': 'מעבד תמלילים  ·  מסד נתונים  ·  גיליון אלקטרוני',
+    'REVIEW/ADD/CHANGE': 'סקירה/הוספה/שינוי',
+    'Ctrl-K: Help': 'Ctrl-K: עזרה',
+    'File: {name}': 'קובץ: {name}',
+    '{kind} Help': 'עזרה - {kind}',
+    'The clipboard is empty.': 'הלוח ריק.',
+    'Could not write file: {err}': 'לא ניתן לכתוב את הקובץ: {err}',
+    'Could not open {file}: {err}': 'לא ניתן לפתוח את {file}: {err}',
+    'Thanks for using RetroWorks ][.  Your files are in {folder}':
+        'תודה שהשתמשת ב-RetroWorks ][.  הקבצים שלך נמצאים ב-{folder}',
+
+    # splash and about
+    'Version {v}': 'גרסה {v}',
+    'An original tribute to the integrated software of the 1980s.': 'מחווה מקורית לתוכנות המשולבות של שנות ה-80.',
+    'Not affiliated with or endorsed by Apple Inc.': 'אינה קשורה ל-Apple Inc. ואינה מאושרת על ידה.',
+    "Today's date: {date}": 'התאריך היום: {date}',
+    'Ctrl takes the place of the Open-Apple key.': 'מקש Ctrl מחליף את מקש ה-Open-Apple.',
+    'Press Return to continue': 'לחץ Return להמשך',
+    'About RetroWorks': 'אודות RetroWorks',
+
+    # main menu
+    'Main Menu': 'תפריט ראשי',
+    'Add files to the Desktop': 'הוספת קבצים ל-Desktop',
+    'Work with one of the files on the Desktop': 'עבודה עם אחד הקבצים שב-Desktop',
+    'Save Desktop files to disk': 'שמירת קבצי ה-Desktop בדיסק',
+    'Remove files from the Desktop': 'הסרת קבצים מה-Desktop',
+    'Other Activities': 'פעולות נוספות',
+    'Quit': 'יציאה',
+    'Do you really want to quit?': 'לצאת מהתוכנה?',
+    'Save changes to "{name}" before quitting?': 'לשמור את השינויים ב-"{name}" לפני היציאה?',
+
+    # add files
+    'Add Files': 'הוספת קבצים',
+    'Get files from:': 'טעינת קבצים מ:',
+    'The current disk: {disk}': 'הדיסק הנוכחי: {disk}',
+    'A different disk': 'דיסק אחר',
+    'A Different Disk': 'דיסק אחר',
+    'Make a new file for the:': 'יצירת קובץ חדש עבור:',
+    'Make a new file:': 'יצירת קובץ חדש:',
+    'From scratch': 'קובץ ריק',
+    'From a text (ASCII) file': 'מקובץ טקסט (ASCII)',
+    'From a text (ASCII / CSV) file': 'מקובץ טקסט (ASCII / CSV)',
+    'From a text (CSV) file': 'מקובץ טקסט (CSV)',
+    'Get Files': 'בחירת קובץ',
+    'The Desktop is full ({n} files). Remove a file first.': 'ה-Desktop מלא ({n} קבצים). יש להסיר קובץ קודם.',
+    'Type the pathname of the disk (folder):': 'הקלד את הנתיב של הדיסק (התיקייה):',
+    'There is no folder called {path}': 'אין תיקייה בשם {path}',
+    'There are no RetroWorks files on {disk}': 'אין קובצי RetroWorks ב-{disk}',
+    'That file is already on the Desktop.': 'הקובץ הזה כבר נמצא ב-Desktop.',
+    'Could not read that file: {err}': 'לא ניתן לקרוא את הקובץ: {err}',
+    'Type a name for this new file:': 'הקלד שם לקובץ החדש:',
+    'A file with that name is already on the Desktop.': 'כבר יש ב-Desktop קובץ בשם הזה.',
+    '"{file}" already exists on disk. Replace it when you save?': 'הקובץ "{file}" כבר קיים בדיסק. להחליף אותו בשמירה?',
+    'Type the complete pathname of the text file:': 'הקלד את הנתיב המלא של קובץ הטקסט:',
+    'That file is empty.': 'הקובץ ריק.',
+
+    # desktop / save / remove
+    'Desktop Index': 'רשימת ה-Desktop',
+    'There are no files on the Desktop. Use "Add files" first.': 'אין קבצים ב-Desktop. השתמש קודם ב"הוספת קבצים".',
+    'There are no files on the Desktop.': 'אין קבצים ב-Desktop.',
+    'Save Files': 'שמירת קבצים',
+    'Save which file?': 'איזה קובץ לשמור?',
+    'All changed files': 'כל הקבצים ששונו',
+    'Nothing to save: no file has changed.': 'אין מה לשמור: אף קובץ לא שונה.',
+    'Saved {n} files to {disk}': '{n} קבצים נשמרו ב-{disk}',
+    'Saved "{name}" to {file}': '"{name}" נשמר בקובץ {file}',
+    'Could not save: {err}': 'השמירה נכשלה: {err}',
+    'Remove Files': 'הסרת קבצים',
+    '"{name}" has changes. Save it before removing?': 'יש שינויים ב-"{name}". לשמור לפני ההסרה?',
+    '"{name}" removed from the Desktop.': '"{name}" הוסר מה-Desktop.',
+
+    # other activities
+    'Change current disk': 'החלפת הדיסק הנוכחי',
+    'Delete files from disk': 'מחיקת קבצים מהדיסק',
+    'Choose language  (Language / שפה)': 'בחירת שפה  (Language / שפה)',
+    'Change Disk': 'החלפת דיסק',
+    'Type the pathname of the new current disk (folder):': 'הקלד את הנתיב של הדיסק (התיקייה) החדש:',
+    '"{path}" does not exist. Create it?': 'התיקייה "{path}" לא קיימת. ליצור אותה?',
+    'Could not create folder: {err}': 'לא ניתן ליצור את התיקייה: {err}',
+    'Current disk is now {disk}': 'הדיסק הנוכחי הוא עכשיו {disk}',
+    'Delete Files': 'מחיקת קבצים',
+    'That file is on the Desktop. Remove it from the Desktop first.': 'הקובץ נמצא ב-Desktop. יש להסיר אותו מה-Desktop קודם.',
+    'Permanently delete "{file}" from the disk?': 'למחוק את "{file}" מהדיסק לצמיתות?',
+    'Deleted {file}': 'הקובץ {file} נמחק',
+    'Could not delete: {err}': 'המחיקה נכשלה: {err}',
+    'Language': 'שפה',
+    'Choose the language for menus and messages:': 'בחר את שפת התפריטים וההודעות:',
+    'Language: {name}': 'שפה: {name}',
+
+    # data base categories screen
+    'CHANGE NAME/CATEGORY': 'שינוי שם/קטגוריה',
+    'Type the names of the categories (fields), one at a time.': 'הקלד את שמות הקטגוריות (השדות), אחד בכל פעם.',
+    'Press Return on an empty line when you are done.': 'בסיום לחץ Return בשורה ריקה.',
+    'Category {n} name: ': 'שם קטגוריה {n}: ',
+    'Category {n}': 'קטגוריה {n}',
+    'You already have a category with that name.': 'כבר יש קטגוריה בשם הזה.',
+
+    # word processor
+    'Insert': 'הוספה',
+    'Overwrite': 'דריסה',
+    'Right-to-left': 'ימין לשמאל',
+    'Left-to-right': 'שמאל לימין',
+    'Line {a} of {b}': 'שורה {a} מתוך {b}',
+    'Column {n}': 'עמודה {n}',
+    '{n} words': '{n} מילים',
+    'Paragraph cut to the clipboard.': 'הפסקה נגזרה ללוח.',
+    'Paragraph copied to the clipboard.': 'הפסקה הועתקה ללוח.',
+    'Pasted above the cursor.': 'הודבק מעל הסמן.',
+    'Paragraph is now right-to-left.': 'הפסקה עכשיו מימין לשמאל.',
+    'Paragraph is now left-to-right.': 'הפסקה עכשיו משמאל לימין.',
+    'Find: ': 'חיפוש: ',
+    '"{text}" was not found.': '"{text}" לא נמצא.',
+    'Replace: ': 'החלפה של: ',
+    'Replace "{text}" with: ': 'להחליף את "{text}" ב: ',
+    'Replaced {n} occurrence(s).': 'הוחלפו {n} מופעים.',
+    'Print to text file: ': 'הדפסה לקובץ טקסט: ',
+    'Printed {n} lines to {file}': '{n} שורות הודפסו לקובץ {file}',
+
+    # spreadsheet
+    'Type entry or use Ctrl commands        Ctrl-K: Help': 'הקלד ערך או השתמש בפקודות Ctrl        Ctrl-K: עזרה',
+    '(Value) ': '(ערך) ',
+    '(Label) ': '(תווית) ',
+    'ERROR: ': 'שגיאה: ',
+    '{ref}: ERROR - {err}': '{ref}: שגיאה - {err}',
+    'circular reference': 'הפניה מעגלית',
+    'number out of range': 'מספר מחוץ לטווח',
+    'formula chain too deep': 'שרשרת נוסחאות ארוכה מדי',
+    'division by zero': 'חלוקה באפס',
+    'syntax error': 'שגיאת תחביר',
+    'math error': 'שגיאה חשבונית',
+    'bad cell reference': 'הפניה לא תקינה לתא',
+    'empty formula': 'נוסחה ריקה',
+    '{ref} copied.': '{ref} הועתק.',
+    '{ref} cut.': '{ref} נגזר.',
+    'Go to cell: ': 'מעבר לתא: ',
+    '"{text}" is not a cell (try something like C12).': '"{text}" אינו תא (נסה למשל C12).',
+    '"{text}" is not a cell.': '"{text}" אינו תא.',
+    'Row {n} inserted.': 'שורה {n} נוספה.',
+    'Delete row {n}?': 'למחוק את שורה {n}?',
+    'Row deleted.': 'השורה נמחקה.',
+    'Width of column {col} (3-60): ': 'רוחב עמודה {col} (3-60): ',
+    'Nothing to replicate: the current cell is blank.': 'אין מה לשכפל: התא הנוכחי ריק.',
+    'Replicate {ref} through cell (e.g. {ex}): ': 'לשכפל את {ref} עד התא (למשל {ex}): ',
+    'Replicated {ref} into {n} cell(s).': '{ref} שוכפל ל-{n} תאים.',
+    'Find text in cells: ': 'חיפוש טקסט בתאים: ',
+    'The spreadsheet is empty.': 'הגיליון ריק.',
+    'Export values to CSV file: ': 'ייצוא הערכים לקובץ CSV: ',
+    'Exported {n} rows to {file}': '{n} שורות יוצאו לקובץ {file}',
+
+    # data base
+    'Record {a} of {b}': 'רשומה {a} מתוך {b}',
+    '({n} in file)': '({n} בקובץ)',
+    'Selection: ': 'בחירה: ',
+    'records containing "{text}"': 'רשומות המכילות "{text}"',
+    'All records': 'כל הרשומות',
+    'Single-record layout': 'תצוגת רשומה בודדת',
+    'Multiple-record layout': 'תצוגת טבלה',
+    'No records match. Press Ctrl-F, then Return, to select all.': 'אין רשומות מתאימות. לחץ Ctrl-F ואז Return כדי לבחור הכול.',
+    'No records yet. Press Ctrl-N to add one.': 'אין עדיין רשומות. לחץ Ctrl-N כדי להוסיף.',
+    'Empty record discarded.': 'רשומה ריקה בוטלה.',
+    'Press Ctrl-N to add a record first.': 'לחץ Ctrl-N כדי להוסיף רשומה קודם.',
+    'Delete record {n}?': 'למחוק את רשומה {n}?',
+    'Record deleted.': 'הרשומה נמחקה.',
+    'Select records containing (Return alone = all records): ': 'בחירת רשומות המכילות (Return בלבד = הכול): ',
+    '{n} record(s) selected.': 'נבחרו {n} רשומות.',
+    'Width of "{name}" (3-60): ': 'רוחב "{name}" (3-60): ',
+    'Record copied.': 'הרשומה הועתקה.',
+    'Record pasted below.': 'הרשומה הודבקה למטה.',
+    'Arranged by "{name}" ': 'מוין לפי "{name}" ',
+    '(9 to 0, Z to A).': '(בסדר יורד).',
+    '(0 to 9, A to Z).': '(בסדר עולה).',
+    'Category: {name}': 'קטגוריה: {name}',
+    'Rename this category': 'שינוי שם הקטגוריה',
+    'Insert a new category after this one': 'הוספת קטגוריה חדשה אחרי זו',
+    'Delete this category': 'מחיקת הקטגוריה',
+    'Move this category left': 'הזזת הקטגוריה שמאלה',
+    'Move this category right': 'הזזת הקטגוריה ימינה',
+    'New name: ': 'שם חדש: ',
+    'Name of the new category: ': 'שם הקטגוריה החדשה: ',
+    'A data base needs at least one category.': 'מסד נתונים צריך לפחות קטגוריה אחת.',
+    'Delete category "{name}" and everything in it?': 'למחוק את הקטגוריה "{name}" ואת כל התוכן שלה?',
+    'Export records to CSV file: ': 'ייצוא הרשומות לקובץ CSV: ',
+    'Exported {n} records to {file}': '{n} רשומות יוצאו לקובץ {file}',
+}, 'help': {
+    'about': [
+        'RetroWorks ][   גרסה ' + VERSION,
+        '',
+        'מעבד תמלילים, מסד נתונים וגיליון אלקטרוני משולבים, בסגנון',
+        'תוכנות העבודה של ה-Apple ][ : מסך ירוק ברוחב 80 עמודות.',
+        '',
+        'נכתבה מאפס ב-Python. זו אינה AppleWorks, אין בה קוד של Apple,',
+        'והיא אינה קשורה ל-Apple Inc. ואינה מאושרת על ידה.',
+        '',
+        'ב-Desktop אפשר להחזיק עד 12 קבצים פתוחים.',
+        'Escape   תמיד מחזיר אחורה, עד התפריט הראשי.',
+        'Ctrl-Q   (Quick Change) קפיצה ישירה לקובץ אחר.',
+        'Ctrl-K   עזרה עבור סוג הקובץ שעובדים עליו.',
+        '',
+        'הקבצים נשמרים כ-JSON פשוט:',
+        '.rwp     מעבד תמלילים',
+        '.rdb     מסד נתונים',
+        '.rss     גיליון אלקטרוני',
+        '',
+        'מכיוון ש-macOS שומרת את מקש Command לעצמה, כל פקודות',
+        'ה-Open-Apple מוקלדות עם Ctrl.',
+    ],
+    'wp': [
+        'פקודות מעבד התמלילים      (Ctrl מחליף את מקש ה-Open-Apple)',
+        '',
+        'Arrows        הזזת הסמן',
+        'Ctrl-T/B      תחילת / סוף המסמך',
+        'PgUp/PgDn     עמוד למעלה / למטה',
+        'Home/End      תחילת / סוף השורה',
+        'Return        פסקה חדשה',
+        'Delete        מחיקה לאחור',
+        'Ctrl-D        מחיקה קדימה',
+        'Ctrl-Y        מחיקה עד סוף הפסקה',
+        'Ctrl-E        מצב הוספה / דריסה',
+        'Tab           4 רווחים',
+        'Ctrl-X / C    גזירה / העתקה של הפסקה',
+        'Ctrl-V        הדבקה מעל הסמן',
+        'Ctrl-F        חיפוש (שוב)',
+        'Ctrl-R        החלפת הכול',
+        'Ctrl-L        כיוון הפסקה: ימין לשמאל / שמאל לימין',
+        'Ctrl-P        "הדפסה" לקובץ טקסט (76 עמודות)',
+        'Ctrl-S        שמירה',
+        'Ctrl-Q        מעבר מהיר לקובץ אחר',
+        'Escape        תפריט ראשי',
+        '',
+        'פסקה מימין לשמאל מיושרת לשוליים הימניים. פסקה חדשה מקבלת',
+        'את הכיוון של הפסקה שבה לחצת Return. השורה התחתונה מציגה',
+        'את מצב הסמן, כיוון הפסקה, השורה, העמודה ומספר המילים.',
+    ],
+    'ss': [
+        'פקודות הגיליון האלקטרוני  (Ctrl מחליף את מקש ה-Open-Apple)',
+        '',
+        'Arrows/Tab    תנועה בין התאים',
+        'Ctrl-T        מעבר ל-A1',
+        'Ctrl-B        התא האחרון שבשימוש',
+        'Ctrl-G        מעבר לתא',
+        'Ctrl-F        חיפוש טקסט',
+        'Return        עריכת התא (או פשוט להתחיל להקליד)',
+        'Delete        ריקון התא',
+        '',
+        'ערך מתחיל בספרה או באחד התווים  + - . = @ (  למשל:',
+        '   +A1*B1        =(B2+B3)/2        @SUM(A1...A10)     @AVG(B1:B9)',
+        'כל השאר הוא תווית. " בהתחלה מכריח תווית ("1984).',
+        'תווית שמתחילה ב-\\ חוזרת לרוחב כל התא:  \\-   \\=',
+        '@SUM @AVG @MIN @MAX @COUNT @ABS @INT @ROUND(x,n) @SQRT',
+        '@MOD(x,y) @IF(cond,a,b) @EXP @LN @LOG @SIN @COS @TAN @ATAN @PI',
+        '$A$1 הפניה מוחלטת;  A1 הפניה יחסית.',
+        '',
+        'Ctrl-C/X/V    העתקה / גזירה / הדבקה של תא',
+        'Ctrl-R        שכפול התא עד תא יעד',
+        'Ctrl-N        הוספת שורה',
+        'Ctrl-D        מחיקת שורה',
+        'Ctrl-W        רוחב עמודה',
+        'Ctrl-P        ייצוא הערכים ל-CSV',
+        'Ctrl-S        שמירה',
+        'Ctrl-Q        מעבר מהיר לקובץ אחר',
+        'Escape        תפריט ראשי',
+    ],
+    'db': [
+        'פקודות מסד הנתונים       (Ctrl מחליף את מקש ה-Open-Apple)',
+        '',
+        'Ctrl-Z        מעבר בין תצוגת טבלה לתצוגת רשומה בודדת',
+        'Arrows        תנועה בין רשומות וקטגוריות',
+        'Ctrl-T/B      רשומה ראשונה / אחרונה',
+        'Return        עריכת השדה (או פשוט להתחיל להקליד)',
+        'Delete        ריקון השדה',
+        'Ctrl-N        רשומה חדשה (Escape מסיים)',
+        'Ctrl-D        מחיקת הרשומה',
+        'Ctrl-C / V    העתקת הרשומה / הדבקה כרשומה חדשה',
+        'Ctrl-F        בחירת רשומות שמכילות טקסט',
+        '              (Return בשורה ריקה בוחר שוב את כולן)',
+        'Ctrl-A        מיון לפי הקטגוריה הזו; שוב = סדר הפוך',
+        'Ctrl-E        שינוי קטגוריות: שם, הוספה, מחיקה, הזזה',
+        'Ctrl-W        רוחב הקטגוריה בטבלה',
+        'Ctrl-P        ייצוא הרשומות הנבחרות ל-CSV',
+        'Ctrl-S        שמירה',
+        'Ctrl-Q        מעבר מהיר לקובץ אחר',
+        'Escape        תפריט ראשי',
+    ],
+}}
 
 
 # --------------------------------------------------------------------------
@@ -2367,7 +2848,7 @@ def run(scr, args):
             if len(app.desktop) < MAX_DESKTOP:
                 app.desktop.append(load_doc(app, os.path.abspath(os.path.expanduser(p))))
         except (OSError, ValueError, KeyError, TypeError) as e:
-            app.msg = f'Could not open {p}: {e}'
+            app.msg = T('Could not open {file}: {err}', file=p, err=e)
     try:
         app.splash()
         app.main_menu()
@@ -2391,7 +2872,12 @@ def main():
                     help='folder used as the "current disk" (default: ~/RetroWorks)')
     ap.add_argument('--theme', choices=['green', 'amber', 'white'], default='green',
                     help='monitor colour (default: green)')
+    ap.add_argument('--lang', help='language for menus and messages, e.g. en or he')
     args = ap.parse_args()
+    load_language_files()
+    cfg = load_config()
+    env_lang = os.environ.get('LANG', '')[:2]
+    set_language(args.lang or cfg.get('language') or (env_lang if env_lang in LANGUAGES else 'en'))
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         sys.exit('RetroWorks must be run in a terminal window (e.g. macOS Terminal).')
     args.folder = os.path.abspath(os.path.expanduser(args.folder))
@@ -2399,7 +2885,7 @@ def main():
     locale.setlocale(locale.LC_ALL, '')
     os.environ.setdefault('ESCDELAY', '25')
     curses.wrapper(run, args)
-    print('Thanks for using RetroWorks ][.  Your files are in', args.folder)
+    print(T('Thanks for using RetroWorks ][.  Your files are in {folder}', folder=args.folder))
 
 
 if __name__ == '__main__':
