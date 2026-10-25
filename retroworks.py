@@ -28,7 +28,7 @@ import sys
 import textwrap
 import unicodedata
 
-VERSION = '1.1'
+VERSION = '1.2'
 EXT = {'wp': '.rwp', 'db': '.rdb', 'ss': '.rss'}
 KIND_NAME = {'wp': 'Word Processor', 'db': 'Data Base', 'ss': 'Spreadsheet'}
 KIND_SHORT = {'wp': 'WP', 'db': 'DB', 'ss': 'SS'}
@@ -130,6 +130,204 @@ def first_strong(s):
 
 
 # --------------------------------------------------------------------------
+# right-to-left text (the Unicode bidirectional algorithm, UAX #9)
+#
+# Text is stored in logical (typing) order.  bidi_visual() works out the
+# order in which it must appear on screen for a paragraph whose base
+# direction is 'L' or 'R'.
+#
+# Some terminals (macOS Terminal) also reorder Hebrew themselves, always as
+# if every line were left-to-right.  For those, terminal_preimage() finds
+# the text to send so that, after the terminal's own reordering, the screen
+# shows exactly the visual line we want.
+# --------------------------------------------------------------------------
+
+MIRROR = {'(': ')', ')': '(', '[': ']', ']': '[', '{': '}', '}': '{',
+          '<': '>', '>': '<', '\u00ab': '\u00bb', '\u00bb': '\u00ab'}
+OPEN_BRACKETS = {'(': ')', '[': ']', '{': '}'}
+RTL_RE = re.compile('[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]')
+NEUTRALS = ('B', 'S', 'WS', 'ON', 'BN')
+
+
+def _btype(ch):
+    t = unicodedata.bidirectional(ch)
+    if not t:
+        return 'L'
+    if t in ('LRE', 'RLE', 'LRO', 'RLO', 'PDF'):
+        return 'BN'
+    if t in ('LRI', 'RLI', 'FSI', 'PDI'):
+        return 'ON'
+    return t
+
+
+def _strong(t):
+    return 'L' if t == 'L' else 'R' if t in ('R', 'EN', 'AN') else None
+
+
+def bidi_levels(s, base):
+    n = len(s)
+    e = 1 if base == 'R' else 0
+    edir = 'R' if e else 'L'
+    orig = [_btype(c) for c in s]
+    t = list(orig)
+    prev = edir                                     # W1
+    for i in range(n):
+        if t[i] == 'NSM':
+            t[i] = prev
+        elif t[i] != 'BN':
+            prev = t[i]
+    last = edir                                     # W2
+    for i in range(n):
+        if t[i] in ('L', 'R', 'AL'):
+            last = t[i]
+        elif t[i] == 'EN' and last == 'AL':
+            t[i] = 'AN'
+    t = ['R' if x == 'AL' else x for x in t]        # W3
+    for i in range(1, n - 1):                       # W4
+        if t[i] == 'ES' and t[i - 1] == 'EN' and t[i + 1] == 'EN':
+            t[i] = 'EN'
+        elif t[i] == 'CS' and t[i - 1] == t[i + 1] and t[i - 1] in ('EN', 'AN'):
+            t[i] = t[i - 1]
+    i = 0                                           # W5
+    while i < n:
+        if t[i] == 'ET':
+            j = i
+            while j < n and t[j] == 'ET':
+                j += 1
+            if (i > 0 and t[i - 1] == 'EN') or (j < n and t[j] == 'EN'):
+                t[i:j] = ['EN'] * (j - i)
+            i = j
+        else:
+            i += 1
+    t = ['ON' if x in ('ES', 'ET', 'CS') else x for x in t]   # W6
+    last = edir                                     # W7
+    for i in range(n):
+        if t[i] in ('L', 'R'):
+            last = t[i]
+        elif t[i] == 'EN' and last == 'L':
+            t[i] = 'L'
+    stack, pairs = [], []                           # N0: bracket pairs
+    for i, c in enumerate(s):
+        if t[i] != 'ON':
+            continue
+        if c in OPEN_BRACKETS:
+            if len(stack) >= 63:
+                break
+            stack.append((OPEN_BRACKETS[c], i))
+        elif c in (')', ']', '}'):
+            for k in range(len(stack) - 1, -1, -1):
+                if stack[k][0] == c:
+                    pairs.append((stack[k][1], i))
+                    del stack[k:]
+                    break
+    for a, b in sorted(pairs):
+        inside = {_strong(t[k]) for k in range(a + 1, b)}
+        if edir in inside:
+            d = edir
+        elif inside & {'L', 'R'}:
+            d = edir
+            for k in range(a - 1, -1, -1):
+                if _strong(t[k]):
+                    d = _strong(t[k])
+                    break
+        else:
+            continue
+        t[a] = t[b] = d
+    i = 0                                           # N1, N2
+    while i < n:
+        if t[i] in NEUTRALS:
+            j = i
+            while j < n and t[j] in NEUTRALS:
+                j += 1
+            before = edir if i == 0 else (_strong(t[i - 1]) or edir)
+            after = edir if j == n else (_strong(t[j]) or edir)
+            d = before if before == after else edir
+            t[i:j] = [d] * (j - i)
+            i = j
+        else:
+            i += 1
+    if e == 0:                                      # I1, I2
+        lev = [1 if x == 'R' else 2 if x in ('AN', 'EN') else 0 for x in t]
+    else:
+        lev = [2 if x in ('L', 'EN', 'AN') else 1 for x in t]
+    i = n - 1                                       # L1
+    while i >= 0 and orig[i] in ('WS', 'BN'):
+        lev[i] = e
+        i -= 1
+    for i in range(n):
+        if orig[i] in ('S', 'B'):
+            lev[i] = e
+            k = i - 1
+            while k >= 0 and orig[k] in ('WS', 'BN'):
+                lev[k] = e
+                k -= 1
+    return lev
+
+
+def bidi_visual(s, base='L'):
+    """Return (visual string, order, levels): order[v] is the index in s of
+    the character shown at visual position v."""
+    n = len(s)
+    if base != 'R' and not RTL_RE.search(s):
+        return s, list(range(n)), [0] * n
+    lev = bidi_levels(s, base)
+    order = list(range(n))
+    odd = [x for x in lev if x % 2]
+    if odd:
+        for level in range(max(lev), min(odd) - 1, -1):     # L2
+            i = 0
+            while i < n:
+                if lev[order[i]] >= level:
+                    j = i
+                    while j < n and lev[order[j]] >= level:
+                        j += 1
+                    order[i:j] = order[i:j][::-1]
+                    i = j
+                else:
+                    i += 1
+    vis = ''.join(MIRROR.get(s[k], s[k]) if lev[k] % 2 else s[k] for k in order)
+    return vis, order, lev
+
+
+LRM = '\u200e'     # invisible left-to-right mark
+
+
+def terminal_preimage(v):
+    """Cells to send to a terminal that reorders every line left-to-right by
+    itself, so that after its reordering the screen shows the visual line v.
+
+    Every stretch of Hebrew in v (letters, and the spaces and punctuation
+    between them) is sent reversed; the terminal reverses it back.  When a
+    number follows such a stretch the terminal would pull the number into
+    it, so an invisible LRM mark is added after the stretch to stop it.
+
+    Returns (cells, src): cells[j] is what to write in column j (a character,
+    sometimes followed by LRM) and src[j] the position in v it shows."""
+    n = len(v)
+    cells, src = list(v), list(range(n))
+    if not RTL_RE.search(v):
+        return cells, src
+    types = [_btype(c) for c in v]
+    i = 0
+    while i < n:
+        if types[i] not in ('R', 'AL'):
+            i += 1
+            continue
+        last, k = i, i + 1
+        while k < n and types[k] not in ('L', 'EN', 'AN'):
+            if types[k] in ('R', 'AL'):
+                last = k
+            k += 1
+        for pos, frm in zip(range(i, last + 1), range(last, i - 1, -1)):
+            cells[pos] = MIRROR.get(v[frm], v[frm])    # the terminal mirrors it back
+            src[pos] = frm
+        if k < n and types[k] in ('EN', 'AN'):
+            cells[last] += LRM
+        i = last + 1
+    return cells, src
+
+
+# --------------------------------------------------------------------------
 # small helpers
 # --------------------------------------------------------------------------
 
@@ -149,7 +347,11 @@ def beep():
 
 def clean(s):
     s = str(s).replace('\t', '    ')
-    return ''.join(ch for ch in s if ch >= ' ' and ch != '\x7f')
+    return ''.join(ch for ch in s if ch >= ' ' and ch != '\x7f' and not zero_width(ch))
+
+
+def zero_width(ch):
+    return unicodedata.combining(ch) != 0 or unicodedata.category(ch) in ('Mn', 'Me', 'Cf')
 
 
 def safe_name(name):
@@ -467,12 +669,16 @@ class App:
         self.current = None
         self.msg = ''
         self.mem_kb = 128
+        self.bidi_mode = 'terminal' if os.environ.get('TERM_PROGRAM') == 'Apple_Terminal' \
+            else 'program'
+        self.cursor_at = None
         self.clip_wp = []
         self.clip_wp_dirs = []
         self.clip_wp_sty = []
         self.clip_ss = None
         self.clip_db = None
         self._colors(theme)
+        self.clear()
 
     # ---- screen -----------------------------------------------------------
     def _colors(self, theme):
@@ -496,27 +702,70 @@ class App:
         except curses.error:
             pass
 
-    def put(self, y, x, s, attr=None):
+    # The screen is drawn into a buffer of visual cells and sent to the
+    # terminal one whole row at a time by flush(), which runs before every
+    # key press.  Whole rows matter: a terminal that reorders Hebrew itself
+    # looks at the entire line.
+    def clear(self):
+        H, W = self.scr.getmaxyx()
+        self.vchars = [[' '] * W for _ in range(H)]
+        self.vattrs = [[self.A_N] * W for _ in range(H)]
+        self.scr.erase()
+
+    def put(self, y, x, s, attr=None, base=None):
+        """Write text given in logical order.  Hebrew is arranged right-to-left;
+        the base direction comes from the first letter unless given."""
         if attr is None:
             attr = self.A_N
+        if base == 'R' or RTL_RE.search(s):
+            s = bidi_visual(s, base or first_strong(s) or 'L')[0]
+        self.put_cells(y, x, s, attr)
+
+    def put_cells(self, y, x, s, attrs):
+        """Write characters that are already in visual order."""
+        if y < 0 or y >= len(self.vchars):
+            return
+        row, arow = self.vchars[y], self.vattrs[y]
+        for k, ch in enumerate(s):
+            xx = x + k
+            if 0 <= xx < len(row):
+                row[xx] = ch
+                arow[xx] = attrs if isinstance(attrs, int) else attrs[k]
+
+    def set_cursor(self, y, x):
+        self.cursor_at = (y, x)
+
+    def flush(self):
         H, W = self.scr.getmaxyx()
-        if y < 0 or y >= H or x >= W:
-            return
-        if x < 0:
-            s, x = s[-x:], 0
-        s = s[:W - x]
-        if y == H - 1 and x + len(s) >= W:
-            s = s[:W - 1 - x]
-        if not s:
-            return
-        try:
-            self.scr.addstr(y, x, s, attr)
-        except curses.error:
-            pass
+        term = self.bidi_mode == 'terminal'
+        for y in range(min(H, len(self.vchars))):
+            row = ''.join(self.vchars[y])[:W]
+            attrs = self.vattrs[y][:W]
+            if term and RTL_RE.search(row):
+                cells, src = terminal_preimage(row)
+                attrs = [attrs[i] for i in src]
+            else:
+                cells = list(row)
+            lim = min(len(cells), W - 1 if y == H - 1 else W)
+            x = 0
+            while x < lim:
+                j = x
+                while j < lim and attrs[j] == attrs[x]:
+                    j += 1
+                try:
+                    self.scr.addstr(y, x, ''.join(cells[x:j]), attrs[x])
+                except curses.error:
+                    pass
+                x = j
+        if self.cursor_at:
+            try:
+                self.scr.move(*self.cursor_at)
+            except curses.error:
+                pass
 
     def frame(self, left, center='', right='Escape: Main Menu', foot='', foot_r=''):
         center, right = T(center), T(right)
-        self.scr.erase()
+        self.clear()
         H, W = self.scr.getmaxyx()
         room = W - (len(right) + 3 if right else 1)
         if len(left) > room:
@@ -539,10 +788,11 @@ class App:
     def too_small(self):
         H, W = self.scr.getmaxyx()
         if H < MIN_H or W < MIN_W:
-            self.scr.erase()
+            self.clear()
             self.put(0, 0, T('RetroWorks needs at least {w}x{h}.', w=MIN_W, h=MIN_H))
             self.put(1, 0, T('This window is {w}x{h}. Please make it larger.', w=W, h=H))
             cursor(0)
+            self.flush()
             self.scr.refresh()
             return True
         return False
@@ -562,6 +812,7 @@ class App:
                 curses.KEY_BACKSPACE: 'BKSP', curses.KEY_DC: 'DEL',
                 curses.KEY_ENTER: 'ENTER', curses.KEY_RESIZE: 'RESIZE',
                 curses.KEY_BTAB: 'BTAB', curses.KEY_F1: 'F1'}
+        self.flush()
         try:
             k = self.scr.get_wch()
         except curses.error:
@@ -582,7 +833,7 @@ class App:
             return 'TAB'
         if o < 32:
             return 'C-' + chr(o + 64)
-        if not k.isprintable():
+        if not k.isprintable() or zero_width(k):
             return None
         return k
 
@@ -600,14 +851,16 @@ class App:
                 off = pos
             if pos - off >= width:
                 off = pos - width + 1
-            self.put(y, x, ''.join(buf[off:off + width]).ljust(width), self.A_R)
-            try:
-                self.scr.move(y, x + pos - off)
-            except curses.error:
-                pass
+            base = first_strong(''.join(buf)) or ('R' if LANG == 'he' else 'L')
+            vis, order, _ = bidi_visual(''.join(buf[off:off + width]).ljust(width), base)
+            self.put_cells(y, x, vis, self.A_R)
+            li = pos - off
+            self.set_cursor(y, x + (order.index(li) if li in order else 0))
             k = self.key()
             if k is None or k == 'RESIZE':
                 continue
+            if base == 'R' and k in ('LEFT', 'RIGHT'):
+                k = 'RIGHT' if k == 'LEFT' else 'LEFT'
             if k == 'ESC':
                 return None, 'ESC'
             if k in exits or k == 'ENTER':
@@ -678,7 +931,7 @@ class App:
         the footer. Returns the geometry (left, title_row, bottom, right) of
         the innermost layer."""
         H, W = self.scr.getmaxyx()
-        self.scr.erase()
+        self.clear()
         grid = [[' '] * W for _ in range(H)]
 
         def hline(y, x1, x2, keep=False):
@@ -703,7 +956,8 @@ class App:
                 clear(y, L, R)
             hline(Tr - 1, L + 1, tabr - 1)
             grid[Tr][L] = '|'
-            for j, ch in enumerate(T(title)[:tabr - L - 7]):
+            for j, ch in enumerate(bidi_visual(T(title)[:tabr - L - 7],
+                                               first_strong(T(title)) or 'L')[0]):
                 grid[Tr][L + 6 + j] = ch
             grid[Tr][tabr] = '|'
             hline(Tr, tabr + 1, R - 1, keep=True)
@@ -713,7 +967,7 @@ class App:
             hline(B, L + 1, R - 1)
             geom = (L, Tr, B, R)
         for y in range(1, H - 1):
-            self.put(y, 0, ''.join(grid[y]))
+            self.put_cells(y, 0, ''.join(grid[y]), self.A_N)
         disk = T('Disk: {disk}', disk=self.short_folder())
         center = T(path[-1]).upper() if path else ''
         cx = (W - len(center)) // 2
@@ -1141,6 +1395,7 @@ class App:
                                        'Delete files from disk',
                                        'Memory size',
                                        'Choose language  (Language / שפה)',
+                                       'Right-to-left display',
                                        'About RetroWorks']), sel)
             if i is None:
                 return
@@ -1189,6 +1444,8 @@ class App:
             elif i == 3:
                 self.language_menu(P)
             elif i == 4:
+                self.bidi_menu(P)
+            elif i == 5:
                 self.show_text('About RetroWorks', help_text('about', ABOUT))
 
     def memory_menu(self, path):
@@ -1205,6 +1462,24 @@ class App:
         cfg['memory'] = self.mem_kb
         save_config(cfg)
         self.msg = T('Memory: {name}  ({n}K available)', name=MEMORY_SIZES[i][0], n=self.avail())
+
+    def bidi_menu(self, path):
+        modes = ['terminal', 'program']
+        items = [('h', 'Who arranges right-to-left text on the screen?'), None,
+                 T('The terminal (macOS Terminal)') + ('  *' if self.bidi_mode == 'terminal' else ''),
+                 T('RetroWorks (Windows Terminal, iTerm2, others)') +
+                 ('  *' if self.bidi_mode == 'program' else ''),
+                 None,
+                 ('h', 'Pick the one that makes this line read correctly:'),
+                 ('h', '\u05e9\u05dc\u05d5\u05dd! \u05d6\u05d4 \u05e0\u05d9\u05e1\u05d9\u05d5\u05df '
+                       '\u05e2\u05dd English \u05d5-1+2.')]
+        i = self.select(path + ['Right-to-left'], items, modes.index(self.bidi_mode))
+        if i is None:
+            return
+        self.bidi_mode = modes[i]
+        cfg = load_config()
+        cfg['bidi'] = self.bidi_mode
+        save_config(cfg)
 
     def language_menu(self, path):
         codes = sorted(LANGUAGES, key=lambda c: (c != 'en', LANGUAGES[c]['name'].lower()))
@@ -1248,7 +1523,7 @@ class App:
                 self.key()
                 continue
             H, W = self.scr.getmaxyx()
-            self.scr.erase()
+            self.clear()
             bw = 56
             x = (W - bw) // 2
             y = max(1, (H - 16) // 2)
@@ -1586,39 +1861,37 @@ class WPDoc(Doc):
             r = self.top + i
             if r >= len(rows):
                 break
-            pi, s, e, last = rows[r]
-            text = self.paras[pi][s:e].rstrip(' ')
-            self.put_styled(2 + i, self.row_x(rows[r], ww, x0), text, self.sty[pi][s:s + len(text)])
+            self.draw_row(2 + i, rows[r], ww, x0)
         cursor(1 if self.insert else 2)
-        try:
-            cx = self.row_x(rows[cr], ww, x0) + col
-            a.scr.move(2 + cr - self.top, max(0, min(W - 1, cx)))
-        except curses.error:
-            pass
+        seg, vis, order = self.row_visual(rows[cr], ww)
+        li = self.ci - rows[cr][1]
+        cx = x0 + (order.index(li) if li in order else 0)
+        a.set_cursor(2 + cr - self.top, max(0, min(W - 1, cx)))
 
-    def put_styled(self, y, x, text, sty):
+    def row_visual(self, row, ww):
+        """A wrapped row arranged for the screen.  It is padded to the full
+        width, so a right-to-left paragraph lines up with the right margin."""
+        pi, s, e, last = row
+        seg = self.paras[pi][s:e]
+        vis, order, _ = bidi_visual(seg + ' ' * max(1, ww + 1 - len(seg)), self.dirs[pi])
+        return seg, vis, order
+
+    def draw_row(self, y, row, ww, x0):
         a = self.app
-        i = 0
-        while i < len(text):
-            j = i
-            while j < len(text) and sty[j:j + 1] == sty[i:i + 1]:
-                j += 1
-            code = int(sty[i]) if sty[i:i + 1].isdigit() else 0
+        pi, s, e, last = row
+        seg, vis, order = self.row_visual(row, ww)
+        st = self.sty[pi]
+        attrs = []
+        for li in order:
+            code = st[s + li] if li < len(seg) and s + li < len(st) else '0'
+            code = int(code) if code.isdigit() else 0
             attr = a.A_N
             if code & 1:
                 attr |= curses.A_BOLD
             if code & 2:
                 attr |= curses.A_UNDERLINE
-            a.put(y, x + i, text[i:j], attr)
-            i = j
-
-    def row_x(self, row, ww, x0):
-        """Screen column where a wrapped row starts: the left margin, or for a
-        right-to-left paragraph far enough right to end at the right margin."""
-        pi, s, e, last = row
-        if self.dirs[pi] != 'R':
-            return x0
-        return x0 + ww - len(self.paras[pi][s:e].rstrip(' '))
+            attrs.append(attr)
+        a.put_cells(y, x0, vis, attrs)
 
     def handle(self, k):
         a = self.app
@@ -1628,6 +1901,8 @@ class WPDoc(Doc):
         st = self.sty[self.pi]
         if k not in ('UP', 'DOWN', 'PGUP', 'PGDN'):
             self.goal = None
+        if self.dirs[self.pi] == 'R' and k in ('LEFT', 'RIGHT'):
+            k = 'RIGHT' if k == 'LEFT' else 'LEFT'   # left arrow moves visually left
         if len(k) == 1 or k == 'TAB':
             s = k if len(k) == 1 else '    '
             code = str(self.style) * len(s)
@@ -2031,6 +2306,8 @@ class SSDoc(Doc):
                     seg, carry = (text.rjust(w - 1) + ' ')[:w], ''
                 elif kind == 'repeat':
                     seg, carry = text, ''
+                elif first_strong(text) == 'R':
+                    seg, carry = text[:w].ljust(w), ''    # right-to-left label: right-aligned
                 else:
                     seg, carry = text[:w].ljust(w), text[w:]
                 cur = r == self.r and c == self.c
@@ -2738,6 +3015,12 @@ LANGUAGES['he'] = {'name': 'עברית', 'strings': {
     'Could not delete: {err}': 'המחיקה נכשלה: {err}',
     'Language': 'שפה',
     'Memory size': 'גודל הזיכרון',
+    'Right-to-left display': 'תצוגת ימין לשמאל',
+    'Right-to-left': 'ימין לשמאל',
+    'Who arranges right-to-left text on the screen?': 'מי מסדר טקסט מימין לשמאל על המסך?',
+    'The terminal (macOS Terminal)': 'הטרמינל (Terminal של macOS)',
+    'RetroWorks (Windows Terminal, iTerm2, others)': 'RetroWorks (Windows Terminal, iTerm2 ואחרים)',
+    'Pick the one that makes this line read correctly:': 'בחר את האפשרות שבה השורה הזו נקראת נכון:',
     'Memory Size': 'גודל הזיכרון',
     'How much memory does this computer have?': 'כמה זיכרון יש במחשב הזה?',
     '{n}K for the Desktop': '{n}K לשולחן העבודה',
@@ -2966,9 +3249,11 @@ def run(scr, args):
     curses.raw()
     scr.keypad(True)
     app = App(scr, args.folder, args.theme)
-    mem = load_config().get('memory')
-    if mem in [kb for _, kb in MEMORY_SIZES]:
-        app.mem_kb = mem
+    cfg = load_config()
+    if cfg.get('memory') in [kb for _, kb in MEMORY_SIZES]:
+        app.mem_kb = cfg['memory']
+    if cfg.get('bidi') in ('terminal', 'program'):
+        app.bidi_mode = cfg['bidi']
     for p in args.files:
         try:
             if len(app.desktop) < MAX_DESKTOP:

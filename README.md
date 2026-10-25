@@ -4,7 +4,7 @@ An integrated **Word Processor, Data Base and Spreadsheet** in the style of the
 80‑column, green‑screen productivity software of the Apple ][ years, rebuilt
 for today's Mac and Windows terminal.
 
-The whole program is a **single Python file (~3,000 lines)** that uses only the
+The whole program is a **single Python file (~3,300 lines)** that uses only the
 Python standard library.
 
 ![Main Menu](screenshots/main-menu.png)
@@ -26,10 +26,14 @@ Python standard library.
   sort, edit categories, CSV import and export.
 - **Languages.** English and Hebrew (עברית) built in. Choose one under
   *Other Activities → Choose language*; the choice is remembered.
-- **Right-to-left paragraphs.** In the word processor, Ctrl‑L switches the
-  current paragraph between left-to-right and right-to-left. Right-to-left
-  paragraphs line up with the right margin. Letter order and fonts are left to
-  the terminal.
+- **Right-to-left text.** In the word processor, Ctrl‑L switches the current
+  paragraph between left-to-right and right-to-left. RetroWorks arranges
+  Hebrew itself with the Unicode bidirectional algorithm, so punctuation,
+  numbers and English words inside Hebrew land in the right place.
+  *Other Activities → Right-to-left display* says who reorders the letters:
+  macOS Terminal does part of it by itself, Windows Terminal and iTerm2 do
+  not. The right choice is picked automatically; the screen shows a sample
+  line to check it. Niqqud (vowel points) is not supported.
 
 - **Memory size.** Under *Other Activities → Memory size* pick an
   Apple //e with 128K or a RamWorks III card with 512K, 1 MB or 3 MB. The
