@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- General -->
+  <data name="Yes" xml:space="preserve"><value>Y</value></data>
+  <data name="No" xml:space="preserve"><value>N</value></data>
+  <data name="EscapeMainMenu" xml:space="preserve"><value>Escape: Main Menu</value></data>
+  <data name="EscapeName" xml:space="preserve"><value>Escape: {0}</value></data>
+  <data name="EscapeCancel" xml:space="preserve"><value>Escape: Cancel</value></data>
+  <data name="EscapeGoBack" xml:space="preserve"><value>Escape: Go back</value></data>
+  <data name="NeedsMinSize" xml:space="preserve"><value>RetroWorks needs at least {0}x{1}.</value></data>
+  <data name="WindowTooSmall" xml:space="preserve"><value>This window is {0}x{1}. Please make it larger.</value></data>
+  <data name="Disk" xml:space="preserve"><value>Disk: {0}</value></data>
+  <data name="AltKForHelp" xml:space="preserve"><value>Alt-K for Help</value></data>
+  <data name="KAavail" xml:space="preserve"><value>{0}K Avail.</value></data>
+  <data name="TypeNumberOrArrows" xml:space="preserve"><value>Type number, or use arrows, then press Return</value></data>
+  <data name="TypeEntryThenReturn" xml:space="preserve"><value>Type entry, then press Return.   Escape cancels</value></data>
+  <data name="PressEscapeOrReturn" xml:space="preserve"><value>Press Escape or Return to continue</value></data>
+  <data name="ArrowsScroll" xml:space="preserve"><value>   (arrows scroll)</value></data>
+  <data name="None" xml:space="preserve"><value>(none)</value></data>
+  <data name="Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Type" xml:space="preserve"><value>Type</value></data>
+  <data name="TypeModified" xml:space="preserve"><value>Type Modified</value></data>
+  <data name="WordProcessor" xml:space="preserve"><value>Word Processor</value></data>
+  <data name="DataBase" xml:space="preserve"><value>Data Base</value></data>
+  <data name="Spreadsheet" xml:space="preserve"><value>Spreadsheet</value></data>
+  <data name="WPDBSS" xml:space="preserve"><value>Word Processor  ·  Data Base  ·  Spreadsheet</value></data>
+  <data name="ReviewAddChange" xml:space="preserve"><value>REVIEW/ADD/CHANGE</value></data>
+  <data name="AltKHelp" xml:space="preserve"><value>Alt-K: Help</value></data>
+  <data name="File" xml:space="preserve"><value>File: {0}</value></data>
+  <data name="KindHelp" xml:space="preserve"><value>{0} Help</value></data>
+  <data name="ClipboardEmpty" xml:space="preserve"><value>The clipboard is empty.</value></data>
+  <data name="CouldNotWriteFile" xml:space="preserve"><value>Could not write file: {0}</value></data>
+  <data name="ThanksForUsing" xml:space="preserve"><value>Thanks for using RetroWorks ][.  Your files are in memory.</value></data>
+
+  <!-- Splash and About -->
+  <data name="Version" xml:space="preserve"><value>Version {0}</value></data>
+  <data name="OriginalTribute" xml:space="preserve"><value>An original tribute to the integrated software of the 1980s.</value></data>
+  <data name="NotAffiliated" xml:space="preserve"><value>Not affiliated with or endorsed by Apple Inc.</value></data>
+  <data name="TodaysDate" xml:space="preserve"><value>Today's date: {0}</value></data>
+  <data name="AltTakesPlaceOfApple" xml:space="preserve"><value>Alt takes the place of the Open-Apple key.</value></data>
+  <data name="PressReturnToContinue" xml:space="preserve"><value>Press Return to continue</value></data>
+  <data name="AboutRetroWorks" xml:space="preserve"><value>About RetroWorks</value></data>
+
+  <!-- Main Menu -->
+  <data name="MainMenu" xml:space="preserve"><value>Main Menu</value></data>
+  <data name="AddFilesToDesktop" xml:space="preserve"><value>Add files to the Desktop</value></data>
+  <data name="WorkWithFileOnDesktop" xml:space="preserve"><value>Work with one of the files on the Desktop</value></data>
+  <data name="SaveDesktopFiles" xml:space="preserve"><value>Save Desktop files (download)</value></data>
+  <data name="RemoveFilesFromDesktop" xml:space="preserve"><value>Remove files from the Desktop</value></data>
+  <data name="OtherActivities" xml:space="preserve"><value>Other Activities</value></data>
+  <data name="Quit" xml:space="preserve"><value>Quit</value></data>
+  <data name="ReallyQuit" xml:space="preserve"><value>Do you really want to quit?</value></data>
+  <data name="SaveChangesBeforeQuitting" xml:space="preserve"><value>Save changes to "{0}" before quitting?</value></data>
+
+  <!-- Add Files -->
+  <data name="AddFiles" xml:space="preserve"><value>Add Files</value></data>
+  <data name="GetFilesFrom" xml:space="preserve"><value>Get files from:</value></data>
+  <data name="LoadFromFile" xml:space="preserve"><value>Load a file from your computer</value></data>
+  <data name="MakeNewFileFor" xml:space="preserve"><value>Make a new file for the:</value></data>
+  <data name="MakeNewFile" xml:space="preserve"><value>Make a new file:</value></data>
+  <data name="FromScratch" xml:space="preserve"><value>From scratch</value></data>
+  <data name="FromTextFile" xml:space="preserve"><value>From a text (ASCII) file</value></data>
+  <data name="FromCsvFile" xml:space="preserve"><value>From a CSV file</value></data>
+  <data name="GetFiles" xml:space="preserve"><value>Get Files</value></data>
+  <data name="DesktopFull" xml:space="preserve"><value>The Desktop is full ({0} files). Remove a file first.</value></data>
+  <data name="NoRetroWorksFiles" xml:space="preserve"><value>There are no RetroWorks files to load.</value></data>
+  <data name="AlreadyOnDesktop" xml:space="preserve"><value>That file is already on the Desktop.</value></data>
+  <data name="CouldNotReadFile" xml:space="preserve"><value>Could not read that file: {0}</value></data>
+  <data name="TypeNameForNewFile" xml:space="preserve"><value>Type a name for this new file:</value></data>
+  <data name="NameAlreadyOnDesktop" xml:space="preserve"><value>A file with that name is already on the Desktop.</value></data>
+  <data name="TypeCompletePathname" xml:space="preserve"><value>Type the complete pathname of the text file:</value></data>
+  <data name="FileIsEmpty" xml:space="preserve"><value>That file is empty.</value></data>
+
+  <!-- Desktop / Save / Remove -->
+  <data name="DesktopIndex" xml:space="preserve"><value>Desktop Index</value></data>
+  <data name="NoFilesOnDesktop" xml:space="preserve"><value>There are no files on the Desktop. Use "Add files" first.</value></data>
+  <data name="NoFilesOnDesktopShort" xml:space="preserve"><value>There are no files on the Desktop.</value></data>
+  <data name="SaveFiles" xml:space="preserve"><value>Save Files</value></data>
+  <data name="SaveWhichFile" xml:space="preserve"><value>Save which file?</value></data>
+  <data name="AllChangedFiles" xml:space="preserve"><value>All changed files</value></data>
+  <data name="NothingToSave" xml:space="preserve"><value>Nothing to save: no file has changed.</value></data>
+  <data name="SavedNFiles" xml:space="preserve"><value>Saved {0} file(s) (downloaded).</value></data>
+  <data name="SavedNameToFile" xml:space="preserve"><value>"{0}" saved (downloaded as {1}).</value></data>
+  <data name="CouldNotSave" xml:space="preserve"><value>Could not save: {0}</value></data>
+  <data name="RemoveFiles" xml:space="preserve"><value>Remove Files</value></data>
+  <data name="HasChangesSaveBeforeRemoving" xml:space="preserve"><value>"{0}" has changes. Save it before removing?</value></data>
+  <data name="RemovedFromDesktop" xml:space="preserve"><value>"{0}" removed from the Desktop.</value></data>
+
+  <!-- Other Activities -->
+  <data name="MemorySize" xml:space="preserve"><value>Memory size</value></data>
+  <data name="ChooseLanguage" xml:space="preserve"><value>Choose language  (Language / שפה)</value></data>
+  <data name="Theme" xml:space="preserve"><value>Monitor theme</value></data>
+  <data name="GreenPhosphor" xml:space="preserve"><value>Green phosphor</value></data>
+  <data name="AmberPhosphor" xml:space="preserve"><value>Amber phosphor</value></data>
+  <data name="Language" xml:space="preserve"><value>Language</value></data>
+  <data name="MemorySizeTitle" xml:space="preserve"><value>Memory Size</value></data>
+  <data name="HowMuchMemory" xml:space="preserve"><value>How much memory does this computer have?</value></data>
+  <data name="NKForDesktop" xml:space="preserve"><value>{0}K for the Desktop</value></data>
+  <data name="MemoryNameNAvail" xml:space="preserve"><value>Memory: {0}  ({1}K available)</value></data>
+  <data name="DesktopMemoryFull" xml:space="preserve"><value>The Desktop memory is full. Remove a file or add memory.</value></data>
+  <data name="ChooseLanguageForMenus" xml:space="preserve"><value>Choose the language for menus and messages:</value></data>
+  <data name="LanguageName" xml:space="preserve"><value>Language: {0}</value></data>
+
+  <!-- Data Base categories screen -->
+  <data name="ChangeNameCategory" xml:space="preserve"><value>CHANGE NAME/CATEGORY</value></data>
+  <data name="TypeCategoryNames" xml:space="preserve"><value>Type the names of the categories (fields), one at a time.</value></data>
+  <data name="PressReturnWhenDone" xml:space="preserve"><value>Press Return on an empty line when you are done.</value></data>
+  <data name="CategoryNName" xml:space="preserve"><value>Category {0} name: </value></data>
+  <data name="CategoryN" xml:space="preserve"><value>Category {0}</value></data>
+  <data name="AlreadyHaveCategory" xml:space="preserve"><value>You already have a category with that name.</value></data>
+
+  <!-- Word Processor -->
+  <data name="Insert" xml:space="preserve"><value>Insert</value></data>
+  <data name="Overwrite" xml:space="preserve"><value>Overwrite</value></data>
+  <data name="RightToLeft" xml:space="preserve"><value>Right-to-left</value></data>
+  <data name="LeftToRight" xml:space="preserve"><value>Left-to-right</value></data>
+  <data name="LineAOfB" xml:space="preserve"><value>Line {0} of {1}</value></data>
+  <data name="ColumnN" xml:space="preserve"><value>Column {0}</value></data>
+  <data name="NWords" xml:space="preserve"><value>{0} words</value></data>
+  <data name="ParagraphCutToClipboard" xml:space="preserve"><value>Paragraph cut to the clipboard.</value></data>
+  <data name="ParagraphCopiedToClipboard" xml:space="preserve"><value>Paragraph copied to the clipboard.</value></data>
+  <data name="PastedAboveCursor" xml:space="preserve"><value>Pasted above the cursor.</value></data>
+  <data name="ParagraphNowRTL" xml:space="preserve"><value>Paragraph is now right-to-left.</value></data>
+  <data name="ParagraphNowLTR" xml:space="preserve"><value>Paragraph is now left-to-right.</value></data>
+  <data name="Bold" xml:space="preserve"><value>Bold</value></data>
+  <data name="Underline" xml:space="preserve"><value>Underline</value></data>
+  <data name="BoldOn" xml:space="preserve"><value>Bold on.</value></data>
+  <data name="BoldOff" xml:space="preserve"><value>Bold off.</value></data>
+  <data name="UnderlineOn" xml:space="preserve"><value>Underline on.</value></data>
+  <data name="UnderlineOff" xml:space="preserve"><value>Underline off.</value></data>
+  <data name="Find" xml:space="preserve"><value>Find: </value></data>
+  <data name="TextNotFound" xml:space="preserve"><value>"{0}" was not found.</value></data>
+  <data name="Replace" xml:space="preserve"><value>Replace: </value></data>
+  <data name="ReplaceTextWith" xml:space="preserve"><value>Replace "{0}" with: </value></data>
+  <data name="ReplacedNOccurrences" xml:space="preserve"><value>Replaced {0} occurrence(s).</value></data>
+  <data name="PrintToTextFile" xml:space="preserve"><value>Print to text file (download): </value></data>
+  <data name="PrintedNLinesToFile" xml:space="preserve"><value>Printed {0} lines to {1}</value></data>
+
+  <!-- Spreadsheet -->
+  <data name="TypeEntryOrAltCommands" xml:space="preserve"><value>Type entry or use Alt commands        Alt-K: Help</value></data>
+  <data name="Value" xml:space="preserve"><value>(Value) </value></data>
+  <data name="Label" xml:space="preserve"><value>(Label) </value></data>
+  <data name="Error" xml:space="preserve"><value>ERROR: </value></data>
+  <data name="RefError" xml:space="preserve"><value>{0}: ERROR - {1}</value></data>
+  <data name="CircularReference" xml:space="preserve"><value>circular reference</value></data>
+  <data name="NumberOutOfRange" xml:space="preserve"><value>number out of range</value></data>
+  <data name="FormulaChainTooDeep" xml:space="preserve"><value>formula chain too deep</value></data>
+  <data name="DivisionByZero" xml:space="preserve"><value>division by zero</value></data>
+  <data name="SyntaxError" xml:space="preserve"><value>syntax error</value></data>
+  <data name="MathError" xml:space="preserve"><value>math error</value></data>
+  <data name="BadCellReference" xml:space="preserve"><value>bad cell reference</value></data>
+  <data name="EmptyFormula" xml:space="preserve"><value>empty formula</value></data>
+  <data name="RefCopied" xml:space="preserve"><value>{0} copied.</value></data>
+  <data name="RefCut" xml:space="preserve"><value>{0} cut.</value></data>
+  <data name="GoToCell" xml:space="preserve"><value>Go to cell: </value></data>
+  <data name="NotACell" xml:space="preserve"><value>"{0}" is not a cell (try something like C12).</value></data>
+  <data name="NotACellShort" xml:space="preserve"><value>"{0}" is not a cell.</value></data>
+  <data name="RowNInserted" xml:space="preserve"><value>Row {0} inserted.</value></data>
+  <data name="DeleteRowN" xml:space="preserve"><value>Delete row {0}?</value></data>
+  <data name="RowDeleted" xml:space="preserve"><value>Row deleted.</value></data>
+  <data name="WidthOfColumn" xml:space="preserve"><value>Width of column {0} (3-60): </value></data>
+  <data name="NothingToReplicate" xml:space="preserve"><value>Nothing to replicate: the current cell is blank.</value></data>
+  <data name="ReplicateRefThroughCell" xml:space="preserve"><value>Replicate {0} through cell (e.g. {1}): </value></data>
+  <data name="ReplicatedRefIntoNCells" xml:space="preserve"><value>{0} replicated into {1} cell(s).</value></data>
+  <data name="FindTextInCells" xml:space="preserve"><value>Find text in cells: </value></data>
+  <data name="SpreadsheetIsEmpty" xml:space="preserve"><value>The spreadsheet is empty.</value></data>
+  <data name="ExportValuesToCsv" xml:space="preserve"><value>Export values to CSV file (download): </value></data>
+  <data name="ExportedNRowsToFile" xml:space="preserve"><value>Exported {0} rows to {1}</value></data>
+
+  <!-- Data Base -->
+  <data name="RecordAOfB" xml:space="preserve"><value>Record {0} of {1}</value></data>
+  <data name="NInFile" xml:space="preserve"><value>({0} in file)</value></data>
+  <data name="Selection" xml:space="preserve"><value>Selection: </value></data>
+  <data name="RecordsContaining" xml:space="preserve"><value>records containing "{0}"</value></data>
+  <data name="AllRecords" xml:space="preserve"><value>All records</value></data>
+  <data name="SingleRecordLayout" xml:space="preserve"><value>Single-record layout</value></data>
+  <data name="MultipleRecordLayout" xml:space="preserve"><value>Multiple-record layout</value></data>
+  <data name="NoRecordsMatch" xml:space="preserve"><value>No records match. Press Alt-F, then Return, to select all.</value></data>
+  <data name="NoRecordsYet" xml:space="preserve"><value>No records yet. Press Alt-N to add one.</value></data>
+  <data name="EmptyRecordDiscarded" xml:space="preserve"><value>Empty record discarded.</value></data>
+  <data name="PressAltNToAddRecord" xml:space="preserve"><value>Press Alt-N to add a record first.</value></data>
+  <data name="DeleteRecordN" xml:space="preserve"><value>Delete record {0}?</value></data>
+  <data name="RecordDeleted" xml:space="preserve"><value>Record deleted.</value></data>
+  <data name="SelectRecordsContaining" xml:space="preserve"><value>Select records containing (Return alone = all records): </value></data>
+  <data name="NRecordsSelected" xml:space="preserve"><value>{0} record(s) selected.</value></data>
+  <data name="WidthOfName" xml:space="preserve"><value>Width of "{0}" (3-60): </value></data>
+  <data name="RecordCopied" xml:space="preserve"><value>Record copied.</value></data>
+  <data name="RecordPastedBelow" xml:space="preserve"><value>Record pasted below.</value></data>
+  <data name="ArrangedByName" xml:space="preserve"><value>Arranged by "{0}" </value></data>
+  <data name="Descending" xml:space="preserve"><value>(9 to 0, Z to A).</value></data>
+  <data name="Ascending" xml:space="preserve"><value>(0 to 9, A to Z).</value></data>
+  <data name="CategoryName" xml:space="preserve"><value>Category: {0}</value></data>
+  <data name="RenameThisCategory" xml:space="preserve"><value>Rename this category</value></data>
+  <data name="InsertNewCategoryAfter" xml:space="preserve"><value>Insert a new category after this one</value></data>
+  <data name="DeleteThisCategory" xml:space="preserve"><value>Delete this category</value></data>
+  <data name="MoveCategoryLeft" xml:space="preserve"><value>Move this category left</value></data>
+  <data name="MoveCategoryRight" xml:space="preserve"><value>Move this category right</value></data>
+  <data name="NewName" xml:space="preserve"><value>New name: </value></data>
+  <data name="NameOfNewCategory" xml:space="preserve"><value>Name of the new category: </value></data>
+  <data name="NeedsAtLeastOneCategory" xml:space="preserve"><value>A data base needs at least one category.</value></data>
+  <data name="DeleteCategoryAndEverything" xml:space="preserve"><value>Delete category "{0}" and everything in it?</value></data>
+  <data name="ExportRecordsToCsv" xml:space="preserve"><value>Export records to CSV file (download): </value></data>
+  <data name="ExportedNRecordsToFile" xml:space="preserve"><value>Exported {0} records to {1}</value></data>
+
+  <!-- Help text -->
+  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   version 1.2
+
+An integrated Word Processor, Data Base and Spreadsheet in the style of
+the 80-column, green-screen productivity software of the Apple ][ years.
+
+Written from scratch in C# / Blazor WebAssembly. It is not AppleWorks,
+contains no Apple code, and is not affiliated with or endorsed by Apple Inc.
+
+The Desktop holds up to 12 open files. Escape always takes you back to
+the Main Menu; Alt-Q ("Quick Change") jumps straight to another file.
+
+Files are plain JSON:  .rwp (word processor)  .rdb (data base)
+                       .rss (spreadsheet)
+
+Alt takes the place of the Open-Apple key.  Alt-K shows the help for
+whichever kind of file you are working on.</value></data>
+
+  <data name="HelpWP" xml:space="preserve"><value>WORD PROCESSOR COMMANDS          (Alt replaces the Open-Apple key)
+
+Arrows ............ move the cursor     Alt-T / Alt-G .. top / bottom
+PgUp / PgDn ....... page up / down      Home / End ....... start / end of line
+Return ............ new paragraph       Alt-E ........... Insert / Overwrite
+Delete ............ delete left         Alt-D ........... delete right
+Tab ............... 4 spaces            Alt-Y ........... clear to end of paragraph
+
+Alt-X ............ cut paragraph       Alt-C ........... copy paragraph
+Alt-V ............ paste paragraph(s) above the cursor
+
+Alt-F ............ find (again)        Alt-R ........... replace all
+Alt-P ............ "print" to a plain .txt file (76 columns, download)
+Alt-L ............ paragraph direction: left-to-right / right-to-left
+Alt-B ............ bold on / off       Alt-U ........... underline on / off
+
+Alt-S ............ save (download)     Alt-Q ........... quick change
+Escape ............ Main Menu           Alt-K ........... this help
+
+Bold and underline apply to what you type next; press the key again
+to turn them off. Printing to a .txt file keeps the text only.
+
+Text wraps automatically. The bottom line shows the line, column,
+cursor mode, word count and the direction of the current paragraph.
+A right-to-left paragraph is aligned to the right margin; new
+paragraphs keep the direction of the one you pressed Return in.</value></data>
+
+  <data name="HelpSS" xml:space="preserve"><value>SPREADSHEET COMMANDS             (Alt replaces the Open-Apple key)
+
+Arrows / Tab ...... move              PgUp / PgDn ...... page
+Alt-T ............ go to A1          Alt-B ........... last used cell
+Alt-G ............ go to a cell      Alt-F ........... find text
+
+Just start typing to make an entry; Return, Tab or an arrow enters it.
+Return / Alt-U ... edit the current entry      Delete .... blank the cell
+
+VALUES start with a digit or  + - . = @ (   for example:
+   +A1*B1        =(B2+B3)/2        @SUM(A1...A10)     @AVG(B1:B9)
+LABELS are anything else. Start with " to force a label ("1984).
+A label that starts with \ repeats across the cell:  \-   \=
+
+Functions: @SUM @AVG @MIN @MAX @COUNT @ABS @INT @ROUND(x,n) @SQRT
+           @MOD(x,y) @IF(cond,a,b) @EXP @LN @LOG @SIN @COS @TAN @ATAN @PI
+Operators: + - * / ^ and comparisons &lt; &gt; = &lt;= &gt;= &lt;&gt; (true = 1)
+$A$1 is an absolute reference; A1 is relative.
+
+Alt-C / Alt-X / Alt-V .. copy / cut / paste a cell (formulas adjust)
+Alt-R ............ replicate the cell down/across to a target cell
+Alt-N ............ insert a row      Alt-D ........... delete the row
+Alt-W ............ column width      Alt-P ........... export values to CSV
+Alt-S ............ save              Alt-Q ........... quick change
+Escape ............ Main Menu         Alt-K ........... this help</value></data>
+
+  <data name="HelpDB" xml:space="preserve"><value>DATA BASE COMMANDS               (Alt replaces the Open-Apple key)
+
+Alt-Z ............ zoom: switch Multiple-record / Single-record layout
+
+Multiple records:  Up/Down = record   Left/Right/Tab = category
+Single record:     Up/Down = category Left/Right, PgUp/PgDn = record
+Alt-T / Alt-B ... first / last record
+
+Just start typing to change the highlighted entry.
+Return / Alt-U ... edit the entry (Return/Tab inside moves to the next)
+Delete ............ blank the entry
+
+Alt-N ............ add a new record (type each entry, Escape ends)
+Alt-D ............ delete this record
+Alt-C / Alt-V ... copy this record / paste it as a new record
+
+Alt-F ............ select only records containing some text
+                    (Return on an empty line selects all again)
+Alt-A ............ arrange (sort) by this category; again = reverse
+Alt-E ............ change categories: rename, insert, delete, move
+Alt-W ............ width of this category in the table
+Alt-P ............ export the selected records to CSV
+Alt-S ............ save              Alt-Q ........... quick change
+Escape ............ Main Menu         Alt-K ........... this help</value></data>
+
+</root>

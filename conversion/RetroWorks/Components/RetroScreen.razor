@@ -1,0 +1,56 @@
+@* Renders the 80×24 character grid from App's VChars/VAttrs buffers.
+   The whole grid is emitted as a single MarkupString so Blazor replaces it
+   wholesale on every tick — no per-cell DOM diffing, which eliminates stale
+   cell artifacts (e.g. leftover menu text in editor rows) and is much faster
+   than diffing 1920 spans individually. *@
+<div class="retro-screen" id="retro-screen">
+    @((MarkupString)BuildGrid())
+</div>
+
+@code {
+    [Parameter] public Core.App App { get; set; } = default!;
+
+    /// <summary>Changes on every render request so Blazor re-renders the grid.</summary>
+    [Parameter] public int Tick { get; set; }
+
+    private string BuildGrid()
+    {
+        var cur = App.CursorAt;   // blinking underline cursor (AppleWorks style)
+        var sb = new System.Text.StringBuilder(Core.App.MinH * Core.App.MinW * 24);
+        for (int y = 0; y < Core.App.MinH; y++)
+        {
+            sb.Append("<div class=\"retro-row\">");
+            for (int x = 0; x < Core.App.MinW; x++)
+            {
+                char ch = App.VChars[y, x];
+                int attr = App.VAttrs[y, x];
+                string cls = GetAttrClass(attr);
+                sb.Append("<span class=\"retro-cell");
+                if (cls.Length > 0) sb.Append(' ').Append(cls);
+                if (cur.HasValue && cur.Value.y == y && cur.Value.x == x)
+                    sb.Append(" cursor");
+                sb.Append("\">").Append(Escape(ch)).Append("</span>");
+            }
+            sb.Append("</div>");
+        }
+        return sb.ToString();
+    }
+
+    private static string Escape(char c) => c switch
+    {
+        '<' => "&lt;",
+        '>' => "&gt;",
+        '&' => "&amp;",
+        '"' => "&quot;",
+        _ => c.ToString()
+    };
+
+    private static string GetAttrClass(int attr)
+    {
+        var classes = new List<string>();
+        if ((attr & 1) != 0) classes.Add("a-b");   // bold
+        if ((attr & 2) != 0) classes.Add("a-u");   // underline
+        if ((attr & 4) != 0) classes.Add("a-r");   // reverse (cursor/highlight)
+        return string.Join(' ', classes);
+    }
+}

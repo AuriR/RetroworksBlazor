@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- General -->
+  <data name="Yes" xml:space="preserve"><value>כ</value></data>
+  <data name="No" xml:space="preserve"><value>ל</value></data>
+  <data name="EscapeMainMenu" xml:space="preserve"><value>Escape: תפריט ראשי</value></data>
+  <data name="EscapeName" xml:space="preserve"><value>Escape: {0}</value></data>
+  <data name="EscapeCancel" xml:space="preserve"><value>Escape: ביטול</value></data>
+  <data name="EscapeGoBack" xml:space="preserve"><value>Escape: חזרה</value></data>
+  <data name="NeedsMinSize" xml:space="preserve"><value>RetroWorks צריכה חלון של {0}x{1} לפחות.</value></data>
+  <data name="WindowTooSmall" xml:space="preserve"><value>החלון הנוכחי הוא {0}x{1}. נא להגדיל אותו.</value></data>
+  <data name="Disk" xml:space="preserve"><value>דיסק: {0}</value></data>
+  <data name="AltKForHelp" xml:space="preserve"><value>Alt-K לעזרה</value></data>
+  <data name="KAavail" xml:space="preserve"><value>{0}K פנויים</value></data>
+  <data name="TypeNumberOrArrows" xml:space="preserve"><value>הקלד מספר או השתמש בחצים, ואז לחץ Return</value></data>
+  <data name="TypeEntryThenReturn" xml:space="preserve"><value>הקלד ולחץ Return.   Escape לביטול</value></data>
+  <data name="PressEscapeOrReturn" xml:space="preserve"><value>לחץ Escape או Return להמשך</value></data>
+  <data name="ArrowsScroll" xml:space="preserve"><value>   (החצים גוללים)</value></data>
+  <data name="None" xml:space="preserve"><value>(אין)</value></data>
+  <data name="Name" xml:space="preserve"><value>שם</value></data>
+  <data name="Type" xml:space="preserve"><value>סוג</value></data>
+  <data name="TypeModified" xml:space="preserve"><value>סוג שינוי אחרון</value></data>
+  <data name="WordProcessor" xml:space="preserve"><value>מעבד תמלילים</value></data>
+  <data name="DataBase" xml:space="preserve"><value>מסד נתונים</value></data>
+  <data name="Spreadsheet" xml:space="preserve"><value>גיליון אלקטרוני</value></data>
+  <data name="WPDBSS" xml:space="preserve"><value>מעבד תמלילים  ·  מסד נתונים  ·  גיליון אלקטרוני</value></data>
+  <data name="ReviewAddChange" xml:space="preserve"><value>סקירה/הוספה/שינוי</value></data>
+  <data name="AltKHelp" xml:space="preserve"><value>Alt-K: עזרה</value></data>
+  <data name="File" xml:space="preserve"><value>קובץ: {0}</value></data>
+  <data name="KindHelp" xml:space="preserve"><value>עזרה - {0}</value></data>
+  <data name="ClipboardEmpty" xml:space="preserve"><value>הלוח ריק.</value></data>
+  <data name="CouldNotWriteFile" xml:space="preserve"><value>לא ניתן לכתוב את הקובץ: {0}</value></data>
+  <data name="ThanksForUsing" xml:space="preserve"><value>תודה שהשתמשת ב-RetroWorks ][.  הקבצים שלך בזיכרון.</value></data>
+
+  <!-- Splash and About -->
+  <data name="Version" xml:space="preserve"><value>גרסה {0}</value></data>
+  <data name="OriginalTribute" xml:space="preserve"><value>מחווה מקורית לתוכנות המשולבות של שנות ה-80.</value></data>
+  <data name="NotAffiliated" xml:space="preserve"><value>אינה קשורה ל-Apple Inc. ואינה מאושרת על ידה.</value></data>
+  <data name="TodaysDate" xml:space="preserve"><value>התאריך היום: {0}</value></data>
+  <data name="AltTakesPlaceOfApple" xml:space="preserve"><value>מקש Alt מחליף את מקש ה-Open-Apple.</value></data>
+  <data name="PressReturnToContinue" xml:space="preserve"><value>לחץ Return להמשך</value></data>
+  <data name="AboutRetroWorks" xml:space="preserve"><value>אודות RetroWorks</value></data>
+
+  <!-- Main Menu -->
+  <data name="MainMenu" xml:space="preserve"><value>תפריט ראשי</value></data>
+  <data name="AddFilesToDesktop" xml:space="preserve"><value>הוספת קבצים לשולחן העבודה</value></data>
+  <data name="WorkWithFileOnDesktop" xml:space="preserve"><value>עבודה עם אחד הקבצים שעל שולחן העבודה</value></data>
+  <data name="SaveDesktopFiles" xml:space="preserve"><value>שמירת הקבצים (הורדה)</value></data>
+  <data name="RemoveFilesFromDesktop" xml:space="preserve"><value>הסרת קבצים משולחן העבודה</value></data>
+  <data name="OtherActivities" xml:space="preserve"><value>פעולות נוספות</value></data>
+  <data name="Quit" xml:space="preserve"><value>יציאה</value></data>
+  <data name="ReallyQuit" xml:space="preserve"><value>לצאת מהתוכנה?</value></data>
+  <data name="SaveChangesBeforeQuitting" xml:space="preserve"><value>לשמור את השינויים ב-"{0}" לפני היציאה?</value></data>
+
+  <!-- Add Files -->
+  <data name="AddFiles" xml:space="preserve"><value>הוספת קבצים</value></data>
+  <data name="GetFilesFrom" xml:space="preserve"><value>טעינת קבצים מ:</value></data>
+  <data name="LoadFromFile" xml:space="preserve"><value>טעינה מקובץ מהמחשב שלך</value></data>
+  <data name="MakeNewFileFor" xml:space="preserve"><value>יצירת קובץ חדש עבור:</value></data>
+  <data name="MakeNewFile" xml:space="preserve"><value>יצירת קובץ חדש:</value></data>
+  <data name="FromScratch" xml:space="preserve"><value>קובץ ריק</value></data>
+  <data name="FromTextFile" xml:space="preserve"><value>מקובץ טקסט (ASCII)</value></data>
+  <data name="FromCsvFile" xml:space="preserve"><value>מקובץ CSV</value></data>
+  <data name="GetFiles" xml:space="preserve"><value>בחירת קובץ</value></data>
+  <data name="DesktopFull" xml:space="preserve"><value>שולחן העבודה מלא ({0} קבצים). יש להסיר קובץ קודם.</value></data>
+  <data name="NoRetroWorksFiles" xml:space="preserve"><value>אין קובצי RetroWorks לטעינה.</value></data>
+  <data name="AlreadyOnDesktop" xml:space="preserve"><value>הקובץ הזה כבר נמצא על שולחן העבודה.</value></data>
+  <data name="CouldNotReadFile" xml:space="preserve"><value>לא ניתן לקרוא את הקובץ: {0}</value></data>
+  <data name="TypeNameForNewFile" xml:space="preserve"><value>הקלד שם לקובץ החדש:</value></data>
+  <data name="NameAlreadyOnDesktop" xml:space="preserve"><value>כבר יש על שולחן העבודה קובץ בשם הזה.</value></data>
+  <data name="TypeCompletePathname" xml:space="preserve"><value>הקלד את נתיב הקובץ:</value></data>
+  <data name="FileIsEmpty" xml:space="preserve"><value>הקובץ ריק.</value></data>
+
+  <!-- Desktop / Save / Remove -->
+  <data name="DesktopIndex" xml:space="preserve"><value>הקבצים שעל שולחן העבודה</value></data>
+  <data name="NoFilesOnDesktop" xml:space="preserve"><value>אין קבצים על שולחן העבודה. השתמש קודם ב"הוספת קבצים".</value></data>
+  <data name="NoFilesOnDesktopShort" xml:space="preserve"><value>אין קבצים על שולחן העבודה.</value></data>
+  <data name="SaveFiles" xml:space="preserve"><value>שמירת קבצים</value></data>
+  <data name="SaveWhichFile" xml:space="preserve"><value>איזה קובץ לשמור?</value></data>
+  <data name="AllChangedFiles" xml:space="preserve"><value>כל הקבצים ששונו</value></data>
+  <data name="NothingToSave" xml:space="preserve"><value>אין מה לשמור: אף קובץ לא שונה.</value></data>
+  <data name="SavedNFiles" xml:space="preserve"><value>{0} קבצים נשמרו (הורדה).</value></data>
+  <data name="SavedNameToFile" xml:space="preserve"><value>"{0}" נשמר (הורד כ-{1}).</value></data>
+  <data name="CouldNotSave" xml:space="preserve"><value>השמירה נכשלה: {0}</value></data>
+  <data name="RemoveFiles" xml:space="preserve"><value>הסרת קבצים</value></data>
+  <data name="HasChangesSaveBeforeRemoving" xml:space="preserve"><value>יש שינויים ב-"{0}". לשמור לפני ההסרה?</value></data>
+  <data name="RemovedFromDesktop" xml:space="preserve"><value>"{0}" הוסר משולחן העבודה.</value></data>
+
+  <!-- Other Activities -->
+  <data name="MemorySize" xml:space="preserve"><value>גודל הזיכרון</value></data>
+  <data name="ChooseLanguage" xml:space="preserve"><value>בחירת שפה  (Language / שפה)</value></data>
+  <data name="Theme" xml:space="preserve"><value>נושא המסך</value></data>
+  <data name="GreenPhosphor" xml:space="preserve"><value>זכוכית ירוקה</value></data>
+  <data name="AmberPhosphor" xml:space="preserve"><value>זכוכית אמבר</value></data>
+  <data name="Language" xml:space="preserve"><value>שפה</value></data>
+  <data name="MemorySizeTitle" xml:space="preserve"><value>גודל הזיכרון</value></data>
+  <data name="HowMuchMemory" xml:space="preserve"><value>כמה זיכרון יש במחשב הזה?</value></data>
+  <data name="NKForDesktop" xml:space="preserve"><value>{0}K לשולחן העבודה</value></data>
+  <data name="MemoryNameNAvail" xml:space="preserve"><value>זיכרון: {0}  ({1}K פנויים)</value></data>
+  <data name="DesktopMemoryFull" xml:space="preserve"><value>הזיכרון של שולחן העבודה מלא. הסר קובץ או הוסף זיכרון.</value></data>
+  <data name="ChooseLanguageForMenus" xml:space="preserve"><value>בחר את שפת התפריטים וההודעות:</value></data>
+  <data name="LanguageName" xml:space="preserve"><value>שפה: {0}</value></data>
+
+  <!-- Data Base categories screen -->
+  <data name="ChangeNameCategory" xml:space="preserve"><value>שינוי שם/קטגוריה</value></data>
+  <data name="TypeCategoryNames" xml:space="preserve"><value>הקלד את שמות הקטגוריות (השדות), אחד בכל פעם.</value></data>
+  <data name="PressReturnWhenDone" xml:space="preserve"><value>בסיום לחץ Return בשורה ריקה.</value></data>
+  <data name="CategoryNName" xml:space="preserve"><value>שם קטגוריה {0}: </value></data>
+  <data name="CategoryN" xml:space="preserve"><value>קטגוריה {0}</value></data>
+  <data name="AlreadyHaveCategory" xml:space="preserve"><value>כבר יש קטגוריה בשם הזה.</value></data>
+
+  <!-- Word Processor -->
+  <data name="Insert" xml:space="preserve"><value>הוספה</value></data>
+  <data name="Overwrite" xml:space="preserve"><value>דריסה</value></data>
+  <data name="RightToLeft" xml:space="preserve"><value>ימין לשמאל</value></data>
+  <data name="LeftToRight" xml:space="preserve"><value>שמאל לימין</value></data>
+  <data name="LineAOfB" xml:space="preserve"><value>שורה {0} מתוך {1}</value></data>
+  <data name="ColumnN" xml:space="preserve"><value>עמודה {0}</value></data>
+  <data name="NWords" xml:space="preserve"><value>{0} מילים</value></data>
+  <data name="ParagraphCutToClipboard" xml:space="preserve"><value>הפסקה נגזרה ללוח.</value></data>
+  <data name="ParagraphCopiedToClipboard" xml:space="preserve"><value>הפסקה הועתקה ללוח.</value></data>
+  <data name="PastedAboveCursor" xml:space="preserve"><value>הודבק מעל הסמן.</value></data>
+  <data name="ParagraphNowRTL" xml:space="preserve"><value>הפסקה עכשיו מימין לשמאל.</value></data>
+  <data name="ParagraphNowLTR" xml:space="preserve"><value>הפסקה עכשיו משמאל לימין.</value></data>
+  <data name="Bold" xml:space="preserve"><value>הדגשה</value></data>
+  <data name="Underline" xml:space="preserve"><value>קו תחתון</value></data>
+  <data name="BoldOn" xml:space="preserve"><value>הדגשה פועלת.</value></data>
+  <data name="BoldOff" xml:space="preserve"><value>הדגשה כבויה.</value></data>
+  <data name="UnderlineOn" xml:space="preserve"><value>קו תחתון פועל.</value></data>
+  <data name="UnderlineOff" xml:space="preserve"><value>קו תחתון כבוי.</value></data>
+  <data name="Find" xml:space="preserve"><value>חיפוש: </value></data>
+  <data name="TextNotFound" xml:space="preserve"><value>"{0}" לא נמצא.</value></data>
+  <data name="Replace" xml:space="preserve"><value>החלפה של: </value></data>
+  <data name="ReplaceTextWith" xml:space="preserve"><value>להחליף את "{0}" ב: </value></data>
+  <data name="ReplacedNOccurrences" xml:space="preserve"><value>הוחלפו {0} מופעים.</value></data>
+  <data name="PrintToTextFile" xml:space="preserve"><value>הדפסה לקובץ טקסט (הורדה): </value></data>
+  <data name="PrintedNLinesToFile" xml:space="preserve"><value>{0} שורות הודפסו ל-{1}</value></data>
+
+  <!-- Spreadsheet -->
+  <data name="TypeEntryOrAltCommands" xml:space="preserve"><value>הקלד ערך או השתמש בפקודות Alt        Alt-K: עזרה</value></data>
+  <data name="Value" xml:space="preserve"><value>(ערך) </value></data>
+  <data name="Label" xml:space="preserve"><value>(תווית) </value></data>
+  <data name="Error" xml:space="preserve"><value>שגיאה: </value></data>
+  <data name="RefError" xml:space="preserve"><value>{0}: שגיאה - {1}</value></data>
+  <data name="CircularReference" xml:space="preserve"><value>הפניה מעגלית</value></data>
+  <data name="NumberOutOfRange" xml:space="preserve"><value>מספר מחוץ לטווח</value></data>
+  <data name="FormulaChainTooDeep" xml:space="preserve"><value>שרשרת נוסחאות ארוכה מדי</value></data>
+  <data name="DivisionByZero" xml:space="preserve"><value>חלוקה באפס</value></data>
+  <data name="SyntaxError" xml:space="preserve"><value>שגיאת תחביר</value></data>
+  <data name="MathError" xml:space="preserve"><value>שגיאה חשבונית</value></data>
+  <data name="BadCellReference" xml:space="preserve"><value>הפניה לא תקינה לתא</value></data>
+  <data name="EmptyFormula" xml:space="preserve"><value>נוסחה ריקה</value></data>
+  <data name="RefCopied" xml:space="preserve"><value>{0} הועתק.</value></data>
+  <data name="RefCut" xml:space="preserve"><value>{0} נגזר.</value></data>
+  <data name="GoToCell" xml:space="preserve"><value>מעבר לתא: </value></data>
+  <data name="NotACell" xml:space="preserve"><value>"{0}" אינו תא (נסה למשל C12).</value></data>
+  <data name="NotACellShort" xml:space="preserve"><value>"{0}" אינו תא.</value></data>
+  <data name="RowNInserted" xml:space="preserve"><value>שורה {0} נוספה.</value></data>
+  <data name="DeleteRowN" xml:space="preserve"><value>למחוק את שורה {0}?</value></data>
+  <data name="RowDeleted" xml:space="preserve"><value>השורה נמחקה.</value></data>
+  <data name="WidthOfColumn" xml:space="preserve"><value>רוחב עמודה {0} (3-60): </value></data>
+  <data name="NothingToReplicate" xml:space="preserve"><value>אין מה לשכפל: התא הנוכחי ריק.</value></data>
+  <data name="ReplicateRefThroughCell" xml:space="preserve"><value>לשכפל את {0} עד התא (למשל {1}): </value></data>
+  <data name="ReplicatedRefIntoNCells" xml:space="preserve"><value>{0} שוכפל ל-{1} תאים.</value></data>
+  <data name="FindTextInCells" xml:space="preserve"><value>חיפוש טקסט בתאים: </value></data>
+  <data name="SpreadsheetIsEmpty" xml:space="preserve"><value>הגיליון ריק.</value></data>
+  <data name="ExportValuesToCsv" xml:space="preserve"><value>ייצוא הערכים לקובץ CSV (הורדה): </value></data>
+  <data name="ExportedNRowsToFile" xml:space="preserve"><value>{0} שורות יוצאו ל-{1}</value></data>
+
+  <!-- Data Base -->
+  <data name="RecordAOfB" xml:space="preserve"><value>רשומה {0} מתוך {1}</value></data>
+  <data name="NInFile" xml:space="preserve"><value>({0} בקובץ)</value></data>
+  <data name="Selection" xml:space="preserve"><value>בחירה: </value></data>
+  <data name="RecordsContaining" xml:space="preserve"><value>רשומות המכילות "{0}"</value></data>
+  <data name="AllRecords" xml:space="preserve"><value>כל הרשומות</value></data>
+  <data name="SingleRecordLayout" xml:space="preserve"><value>תצוגת רשומה בודדת</value></data>
+  <data name="MultipleRecordLayout" xml:space="preserve"><value>תצוגת טבלה</value></data>
+  <data name="NoRecordsMatch" xml:space="preserve"><value>אין רשומות מתאימות. לחץ Alt-F ואז Return כדי לבחור הכול.</value></data>
+  <data name="NoRecordsYet" xml:space="preserve"><value>אין עדיין רשומות. לחץ Alt-N כדי להוסיף.</value></data>
+  <data name="EmptyRecordDiscarded" xml:space="preserve"><value>רשומה ריקה בוטלה.</value></data>
+  <data name="PressAltNToAddRecord" xml:space="preserve"><value>לחץ Alt-N כדי להוסיף קודם.</value></data>
+  <data name="DeleteRecordN" xml:space="preserve"><value>למחוק את רשומה {0}?</value></data>
+  <data name="RecordDeleted" xml:space="preserve"><value>הרשומה נמחקה.</value></data>
+  <data name="SelectRecordsContaining" xml:space="preserve"><value>בחירת רשומות המכילות (Return בלבד = הכול): </value></data>
+  <data name="NRecordsSelected" xml:space="preserve"><value>נבחרו {0} רשומות.</value></data>
+  <data name="WidthOfName" xml:space="preserve"><value>רוחב "{0}" (3-60): </value></data>
+  <data name="RecordCopied" xml:space="preserve"><value>הרשומה הועתקה.</value></data>
+  <data name="RecordPastedBelow" xml:space="preserve"><value>הרשומה הודבקה למטה.</value></data>
+  <data name="ArrangedByName" xml:space="preserve"><value>מוין לפי "{0}" </value></data>
+  <data name="Descending" xml:space="preserve"><value>(בסדר יורד).</value></data>
+  <data name="Ascending" xml:space="preserve"><value>(בסדר עולה).</value></data>
+  <data name="CategoryName" xml:space="preserve"><value>קטגוריה: {0}</value></data>
+  <data name="RenameThisCategory" xml:space="preserve"><value>שינוי שם הקטגוריה</value></data>
+  <data name="InsertNewCategoryAfter" xml:space="preserve"><value>הוספת קטגוריה חדשה אחרי זו</value></data>
+  <data name="DeleteThisCategory" xml:space="preserve"><value>מחיקת הקטגוריה</value></data>
+  <data name="MoveCategoryLeft" xml:space="preserve"><value>הזזת הקטגוריה שמאלה</value></data>
+  <data name="MoveCategoryRight" xml:space="preserve"><value>הזזת הקטגוריה ימינה</value></data>
+  <data name="NewName" xml:space="preserve"><value>שם חדש: </value></data>
+  <data name="NameOfNewCategory" xml:space="preserve"><value>שם הקטגוריה החדשה: </value></data>
+  <data name="NeedsAtLeastOneCategory" xml:space="preserve"><value>מסד נתונים צריך לפחות קטגוריה אחת.</value></data>
+  <data name="DeleteCategoryAndEverything" xml:space="preserve"><value>למחוק את הקטגוריה "{0}" ואת כל התוכן שלה?</value></data>
+  <data name="ExportRecordsToCsv" xml:space="preserve"><value>ייצוא הרשומות לקובץ CSV (הורדה): </value></data>
+  <data name="ExportedNRecordsToFile" xml:space="preserve"><value>{0} רשומות יוצאו ל-{1}</value></data>
+
+  <!-- Help text -->
+  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   גרסה 1.2
+
+מעבד תמלילים, מסד נתונים וגיליון אלקטרוני משולבים, בסגנון
+תוכנות העבודה של ה-Apple ][ : מסך ירוק ברוחב 80 עמודות.
+
+נכתבה מאפס ב-C# / Blazor WebAssembly. זו אינה AppleWorks, אין בה קוד של Apple,
+והיא אינה קשורה ל-Apple Inc. ואינה מאושרת על ידה.
+
+על שולחן העבודה אפשר להחזיק עד 12 קבצים פתוחים.
+Escape   תמיד מחזיר אחורה, עד התפריט הראשי.
+Alt-Q   (Quick Change) קפיצה ישירה לקובץ אחר.
+Alt-K   עזרה עבור סוג הקובץ שעובדים עליו.
+
+הקבצים נשמרים כ-JSON פשוט:
+.rwp     מעבד תמלילים
+.rdb     מסד נתונים
+.rss     גיליון אלקטרוני
+
+מכיוון ש-macOS שומרת את מקש Command לעצמה, כל פקודות
+ה-Open-Apple מוקלדות עם Alt.</value></data>
+
+  <data name="HelpWP" xml:space="preserve"><value>פקודות מעבד התמלילים      (Alt מחליף את מקש ה-Open-Apple)
+
+Arrows        הזזת הסמן
+Alt-T/G       תחילת / סוף המסמך
+PgUp/PgDn     עמוד למעלה / למטה
+Home/End      תחילת / סוף השורה
+Return        פסקה חדשה
+Delete        מחיקה לאחור
+Alt-D         מחיקה קדימה
+Alt-Y         מחיקה עד סוף הפסקה
+Alt-E         מצב הוספה / דריסה
+Tab           4 רווחים
+Alt-X / C     גזירה / העתקה של הפסקה
+Alt-V         הדבקה מעל הסמן
+Alt-F         חיפוש (שוב)
+Alt-R         החלפת הכול
+Alt-L         כיוון הפסקה: ימין לשמאל / שמאל לימין
+Alt-B         הדגשה (Bold) פועלת / כבויה
+Alt-U         קו תחתון פועל / כבוי
+Alt-P         "הדפסה" לקובץ טקסט (76 עמודות, הורדה)
+Alt-S         שמירה (הורדה)
+Alt-Q         מעבר מהיר לקובץ אחר
+Escape        תפריט ראשי
+
+הדגשה וקו תחתון חלים על מה שמקלידים מעכשיו; לחיצה נוספת מכבה.
+הדפסה לקובץ טקסט שומרת את הטקסט בלבד.
+
+פסקה מימין לשמאל מיושרת לשוליים הימניים. פסקה חדשה מקבלת
+את הכיוון של הפסקה שבה לחצת Return. השורה התחתונה מציגה
+את מצב הסמן, כיוון הפסקה, השורה, העמודה ומספר המילים.</value></data>
+
+  <data name="HelpSS" xml:space="preserve"><value>פקודות הגיליון האלקטרוני  (Alt מחליף את מקש ה-Open-Apple)
+
+Arrows/Tab    תנועה בין התאים
+Alt-T         מעבר ל-A1
+Alt-B         התא האחרון שבשימוש
+Alt-G         מעבר לתא
+Alt-F         חיפוש טקסט
+Return        עריכת התא (או פשוט להתחיל להקליד)
+Delete        ריקון התא
+
+ערך מתחיל בספרה או באחד התווים  + - . = @ (  למשל:
+   +A1*B1        =(B2+B3)/2        @SUM(A1...A10)     @AVG(B1:B9)
+כל השאר הוא תווית. " בהתחלה מכריח תווית ("1984).
+תווית שמתחילה ב-\ חוזרת לרוחב כל התא:  \-   \=
+@SUM @AVG @MIN @MAX @COUNT @ABS @INT @ROUND(x,n) @SQRT
+@MOD(x,y) @IF(cond,a,b) @EXP @LN @LOG @SIN @COS @TAN @ATAN @PI
+$A$1 הפניה מוחלטת;  A1 הפניה יחסית.
+
+Alt-C/X/V     העתקה / גזירה / הדבקה של תא
+Alt-R         שכפול התא עד תא יעד
+Alt-N         הוספת שורה
+Alt-D         מחיקת שורה
+Alt-W         רוחב עמודה
+Alt-P         ייצוא הערכים ל-CSV (הורדה)
+Alt-S         שמירה
+Alt-Q         מעבר מהיר לקובץ אחר
+Escape        תפריט ראשי</value></data>
+
+  <data name="HelpDB" xml:space="preserve"><value>פקודות מסד הנתונים       (Alt מחליף את מקש ה-Open-Apple)
+
+Alt-Z         מעבר בין תצוגת טבלה לתצוגת רשומה בודדת
+Arrows        תנועה בין רשומות וקטגוריות
+Alt-T/B       רשומה ראשונה / אחרונה
+Return        עריכת השדה (או פשוט להתחיל להקליד)
+Delete        ריקון השדה
+Alt-N         רשומה חדשה (Escape מסיים)
+Alt-D         מחיקת הרשומה
+Alt-C / V     העתקת הרשומה / הדבקה כרשומה חדשה
+Alt-F         בחירת רשומות שמכילות טקסט
+              (Return בשורה ריקה בוחר שוב את כולן)
+Alt-A         מיון לפי הקטגוריה הזו; שוב = סדר הפוך
+Alt-E         שינוי קטגוריות: שם, הוספה, מחיקה, הזזה
+Alt-W         רוחב הקטגוריה בטבלה
+Alt-P         ייצוא הרשומות הנבחרות ל-CSV (הורדה)
+Alt-S         שמירה
+Alt-Q         מעבר מהיר לקובץ אחר
+Escape        תפריט ראשי</value></data>
+
+</root>

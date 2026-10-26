@@ -1,0 +1,74 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<div class="retro-container" id="retro-container">
+    <RetroScreen App="@_app" Tick="@_tick" />
+</div>
+
+@code {
+    private Core.App _app = new();
+    private int _tick;
+    private DotNetObjectReference<RetroApp>? _appRef;
+    private IJSObjectReference? _jsModule;
+    private bool _started;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _started) return;
+        _started = true;
+
+        // Import the JS module FIRST, then wire everything up.
+        _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/interop.js");
+
+        // Subscribe to render requests from the App; also sync the CSS theme.
+        _app.RenderRequested += () => InvokeAsync(() =>
+        {
+            _tick = _app.RenderTick;
+            SyncTheme();
+            StateHasChanged();
+        });
+
+        // Set up JS interop functions on the App (download / file picker).
+        _app.DownloadFileFunc = async (fileName, content) =>
+            await _jsModule.InvokeVoidAsync("downloadFile", fileName, content);
+        _app.LoadFileFunc = async accept =>
+            await _jsModule.InvokeAsync<string>("loadFile", accept);
+
+        // Register the global keydown handler that calls back into THIS component
+        // (the [JSInvokable] OnKey method lives here, not on Core.App).
+        _appRef = DotNetObjectReference.Create(this);
+        await _jsModule.InvokeVoidAsync("initKeyHandler", _appRef);
+
+        SyncTheme();
+
+        // Start the app main loop in the background.
+        var jsModule = _jsModule;
+        _ = Task.Run(async () =>
+        {
+            try { await _app.RunAsync(); }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"App error: {ex}");
+                // Surface the exception in the browser so it is not silently swallowed.
+                try { if (jsModule is not null) await jsModule.InvokeVoidAsync("reportError", ex.ToString()); }
+                catch { /* interop itself failed; nothing more we can do */ }
+            }
+        });
+
+        StateHasChanged();
+    }
+
+    /// <summary>Apply the App's theme ("green"/"amber") to the document root.</summary>
+    private void SyncTheme()
+    {
+        if (_jsModule is not null)
+            _ = _jsModule.InvokeVoidAsync("setTheme", _app.Theme);
+    }
+
+    [JSInvokable]
+    public void OnKey(string token)
+    {
+        InvokeAsync(() => _app.EnqueueKey(token));
+    }
+
+}

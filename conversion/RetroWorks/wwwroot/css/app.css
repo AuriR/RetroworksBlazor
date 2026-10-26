@@ -1,0 +1,105 @@
+/* RetroWorks — phosphor terminal theme (calm, muted, CRT glow). */
+
+:root {
+    --bg: #050805;
+    --fg-green: #33ff66;
+    --fg-amber: #ffb000;
+    --fg-dim: rgba(51, 255, 102, 0.45);
+    --glow: rgba(51, 255, 102, 0.35);
+}
+
+html[data-theme="amber"] {
+    --fg-green: #ffb000;
+    --fg-dim: rgba(255, 176, 0, 0.45);
+    --glow: rgba(255, 176, 0, 0.35);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    font-family: 'VT323', monospace;
+}
+
+#app { height: 100%; }
+
+.retro-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, #0a120a 0%, var(--bg) 75%);
+}
+
+/* The 80x24 grid. Each row is a flex line of fixed-size cells so the
+   layout stays perfectly rectangular and responsive via font size. */
+.retro-screen {
+    color: var(--fg-green);
+    text-shadow: 0 0 6px var(--glow), 0 0 1px currentColor;
+    user-select: none;
+    cursor: default;
+    line-height: 1;
+}
+
+.retro-row {
+    display: flex;
+    white-space: pre;
+}
+
+.retro-cell {
+    display: inline-block;
+    width: 0.5em;      /* VT323 glyph aspect ~ 1:2 */
+    text-align: center;
+    font-size: inherit;
+}
+
+/* Attribute classes (A_B=bold, A_U=underline, A_R=reverse) */
+.a-b { font-weight: bold; }
+.a-u { text-decoration: underline; }
+.a-r {
+    background: var(--fg-green);
+    color: var(--bg);
+    text-shadow: none;
+}
+
+/* Blinking underline cursor (AppleWorks style). steps(2) gives the hard
+   on/off blink of a real CRT rather than a smooth fade.
+   Uses an inset box-shadow (not a border) so it is paint-only and never
+   changes the cell's layout size — no row shift when the cursor moves. */
+.cursor {
+    animation: cw-blink 1s steps(2, start) infinite;
+}
+
+@keyframes cw-blink {
+    0%, 49%   { box-shadow: inset 0 -0.12em 0 currentColor; }
+    50%, 100% { box-shadow: inset 0 -0.12em 0 transparent; }
+}
+
+/* Subtle CRT scanline overlay for atmosphere (very low contrast). */
+.retro-container::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.015) 0px,
+        rgba(255, 255, 255, 0.015) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+}
+
+/* Soft vignette to focus the center of the screen. */
+.retro-container::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.5) 100%);
+}
