@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\dev\\RetroWorks\\conversion\\RetroWorks\\RetroWorks.csproj": {}
+    "C:\\dev\\RetroWorks\\conversion\\RetroWorks\\RetroWorks.csproj": {}
   },
   "projects": {
-    "c:\\dev\\RetroWorks\\conversion\\RetroWorks\\RetroWorks.csproj": {
+    "C:\\dev\\RetroWorks\\conversion\\RetroWorks\\RetroWorks.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\dev\\RetroWorks\\conversion\\RetroWorks\\RetroWorks.csproj",
+        "projectUniqueName": "C:\\dev\\RetroWorks\\conversion\\RetroWorks\\RetroWorks.csproj",
         "projectName": "RetroWorks",
-        "projectPath": "c:\\dev\\RetroWorks\\conversion\\RetroWorks\\RetroWorks.csproj",
+        "projectPath": "C:\\dev\\RetroWorks\\conversion\\RetroWorks\\RetroWorks.csproj",
         "packagesPath": "C:\\Users\\aurir\\.nuget\\packages\\",
-        "outputPath": "c:\\dev\\RetroWorks\\conversion\\RetroWorks\\obj\\",
+        "outputPath": "C:\\dev\\RetroWorks\\conversion\\RetroWorks\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

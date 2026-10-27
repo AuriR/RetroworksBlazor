@@ -5,7 +5,7 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
   "mainAssemblyName": "RetroWorks",
   "applicationEnvironment": "Development",
   "resources": {
-    "hash": "sha256-d1gd1W7yFv/yDaLdGJ06rGzD2DIT0DNRt75/6LX5S6A=",
+    "hash": "sha256-P/VeebZjyjupLAl1uK33stjsBbB1PTTui+8TxA4odUQ=",
     "jsModuleNative": [
       {
         "name": "dotnet.native.bjoj0wmylw.js"
@@ -1242,16 +1242,16 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
       },
       {
         "virtualPath": "RetroWorks.wasm",
-        "name": "RetroWorks.fwjttiac62.wasm",
-        "hash": "sha256-AZH0U+cRHS3rmY1BaLEsN3/gVXNeK09D07i7UGEOcs4=",
+        "name": "RetroWorks.75er300hfk.wasm",
+        "hash": "sha256-pVxOcUgLGw+6hIkt7B/cTLmqeMrDZIYK0p5zLAlQ34U=",
         "cache": "force-cache"
       }
     ],
     "pdb": [
       {
         "virtualPath": "RetroWorks.pdb",
-        "name": "RetroWorks.ahgvmi86qx.pdb",
-        "hash": "sha256-0jyKAo6EdDb9ipQ4NEm1siM7cS1DblchrepmpI52sBw=",
+        "name": "RetroWorks.vivcji3bp9.pdb",
+        "hash": "sha256-aWpZXzcgyBinGBUv/ypIMqaa3XwyWDvJzn91m+h8O6A=",
         "cache": "force-cache"
       }
     ],
@@ -1259,8 +1259,8 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
       "he": [
         {
           "virtualPath": "RetroWorks.resources.wasm",
-          "name": "RetroWorks.resources.0q0eren4rp.wasm",
-          "hash": "sha256-2KFqXk4CFDe1yD5EsUQJ+KlPEZSy8LBamwcEEI6b/U4=",
+          "name": "RetroWorks.resources.9ybeqfl7z5.wasm",
+          "hash": "sha256-ATpbnGS44d5/calHTX1Vde5GMK6UNsiUzVgjV0WsVcE=",
           "cache": "force-cache"
         }
       ]

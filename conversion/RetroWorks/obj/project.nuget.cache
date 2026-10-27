@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "ZSPX/Y/3JHs=",
+  "dgSpecHash": "hUasXCM4ZYE=",
   "success": true,
-  "projectFilePath": "c:\\dev\\RetroWorks\\conversion\\RetroWorks\\RetroWorks.csproj",
+  "projectFilePath": "C:\\dev\\RetroWorks\\conversion\\RetroWorks\\RetroWorks.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\aurir\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.14\\microsoft.aspnetcore.app.internal.assets.10.0.14.nupkg.sha512",
     "C:\\Users\\aurir\\.nuget\\packages\\microsoft.aspnetcore.authorization\\10.0.13\\microsoft.aspnetcore.authorization.10.0.13.nupkg.sha512",
