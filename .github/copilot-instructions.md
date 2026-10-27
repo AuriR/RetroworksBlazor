@@ -87,3 +87,10 @@ dotnet run --project "c:\dev\RetroWorks\conversion\RetroWorks\RetroWorks.csproj"
 - Calm, muted retro aesthetic; phosphor green/amber only. No modern UI chrome inside the grid.
 - Porting rule: when behavior is in question, **check `retroworks.py` first** — it is the spec.
 - Keep comments explaining non-obvious porting decisions (e.g. PadLeft NOTEs).
+
+## Architecture.md maintenance (living document)
+
+- `Architecture.md` at repo root is a **living architecture doc** (data model, screen flows, entry points, business rules; mermaid diagrams). It must be updated whenever non-trivial changes are made to the app (new doc type, new persistence mechanism, significant refactor of flows, version bumps, etc.). If you change code and don't update it, revert the change.
+- **No authentication** in this project — omit any auth section and do not add authenticated/guest flow diagrams.
+- Mermaid diagrams must parse cleanly (GitHub renders them). Rules: no HTML entities (`&lt;`/`&gt;`) inside node labels; quote subgraph titles that contain parentheses (`subgraph X["Title (paren)"]`); avoid pipe-delimited edge labels in `erDiagram`. Validate with the official Mermaid CLI before relying on GitHub rendering.
+- Keep temp/validation scripts out of the repo — delete them after use.
