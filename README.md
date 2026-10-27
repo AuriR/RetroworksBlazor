@@ -2,10 +2,11 @@
 
 An integrated **Word Processor, Data Base and Spreadsheet** in the style of the
 80‑column, green‑screen productivity software of the Apple ][ years, rebuilt
-for today's Mac and Windows terminal.
+for today's web browser.
 
-The whole program is a **single Python file (~3,300 lines)** that uses only the
-Python standard library.
+Originally a Python program, and ported to Blazor WASM.
+Original Python: https://github.com/udiweinstein/RetroWorks
+Blazor Port ported with Local AI / Qwen 3.8.
 
 ![Main Menu](screenshots/main-menu.png)
 ![Add Files](screenshots/add-files-menu.png)
@@ -34,48 +35,26 @@ Python standard library.
   macOS Terminal does part of it by itself, Windows Terminal and iTerm2 do
   not. The right choice is picked automatically; the screen shows a sample
   line to check it. Niqqud (vowel points) is not supported.
-
 - **Memory size.** Under *Other Activities → Memory size* pick an
   Apple //e with 128K or a RamWorks III card with 512K, 1 MB or 3 MB. The
   "K Avail." counter and the Desktop limit follow your choice.
+- **Browser Filesystem.** All files stored in local storage, persisted between sessions. Download when you like.
 
 ### Adding a language
 
-Put a JSON file in a `languages` folder next to `retroworks.py`, named with
-the language code (for example `languages/fr.json`):
-
-    {"name": "Français",
-     "strings": {"Main Menu": "Menu principal", "Quit": "Quitter"}}
-
-Keys are the English texts as they appear in the program. Anything not
-translated stays in English. The built-in Hebrew table at the end of
-`retroworks.py` lists every text.
-
-Because macOS keeps the Command key for itself, **Ctrl takes the place of the
-Open‑Apple key**. Press **Ctrl‑K** in any file for its command list.
+Uses standard .NET Resource / RESX files.
 
 ## Running it
 
-**Mac:** double-click `RetroWorks.command`. The first time, macOS may block the
-unsigned file: right-click it and choose **Open**, or allow it in System Settings →
-Privacy & Security. You can also run it from Terminal:
-
-    python3 retroworks.py
-
-**Windows:** double-click `RetroWorks.bat`. On the first run it installs
-`windows-curses`. Windows support has not been tested yet, so reports are welcome.
-
-    pip install windows-curses
-    python retroworks.py
-
-Options: `--theme green|amber|white`, `--lang en|he` and `--folder <path>`
-(default `~/RetroWorks`).
-
-Files are saved as plain JSON: `.rwp` (word processor), `.rdb` (data base) and
-`.rss` (spreadsheet).
+Runs as a Blazor WASM site. You can also try it at https://appleworks.auri.net.
 
 ## About
 
+Original Python:
 Written with Claude (Anthropic's AI). RetroWorks is an independent program
 written from scratch. It is **not AppleWorks**, contains no Apple code, and is
 not affiliated with or endorsed by Apple Inc.
+
+Blazor WASM:
+Same deal, but using llama.cpp and Qwen 3.8. Probably others by the time you read this.
+
