@@ -272,7 +272,9 @@ public sealed class SSDoc : Doc, FormulaEngine.ISheet
 
     private async Task HandleImpl(string k)
     {
-        if (k.Length == 1 && char.IsLetterOrDigit(k[0]))
+        // Any single printable character starts a cell edit — matches the
+        // Python original (len(k)==1). This is how you type "=A1+B2" etc.
+        if (k.Length == 1)
         {
             await EditAsync(k);
             return;

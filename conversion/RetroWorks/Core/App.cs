@@ -41,6 +41,9 @@ public sealed class App
     public int MemKb { get; set; } = 1024;
     public string Theme { get; set; } = "green"; // "green" or "amber"
 
+    /// <summary>CRT display emulation (scanlines, screen-door, rounded glass). Off by default.</summary>
+    public bool CrtEmulation { get; set; }
+
     // ---- Key input (async) ----
     private readonly ConcurrentQueue<string> _keyQueue = new();
     private TaskCompletionSource<string>? _keyTcs;
@@ -55,6 +58,12 @@ public sealed class App
     public Func<string, string, Task>? DownloadFileFunc;
     public Func<string, Task<string?>>? LoadFileFunc;
 
+    // localStorage persistence ("the disk" that survives refresh/restart)
+    public Func<string, string, Task<bool>>? SaveLocalFileFunc;
+    public Func<string, Task<string?>>? LoadLocalFileFunc;
+    public Func<Task<List<string>>>? ListLocalFilesFunc;
+    public Func<string, Task<bool>>? DeleteLocalFileFunc;
+
     /// <summary>Trigger a browser download of text content.</summary>
     public async Task DownloadFile(string fileName, string content)
     {
@@ -65,6 +74,24 @@ public sealed class App
     /// <summary>Load a file from the browser (file picker). Returns JSON text or null.</summary>
     public async Task<string?> LoadFileAsync(string accept) =>
         LoadFileFunc is not null ? await LoadFileFunc(accept) : null;
+
+    // ---- localStorage helpers ----
+
+    /// <summary>Write a file's JSON to the browser's localStorage. Returns true on success.</summary>
+    public async Task<bool> SaveLocalFileAsync(string name, string json) =>
+        SaveLocalFileFunc is not null ? await SaveLocalFileFunc(name, json) : false;
+
+    /// <summary>Read a file's JSON from localStorage. Returns null if absent.</summary>
+    public async Task<string?> LoadLocalFileAsync(string name) =>
+        LoadLocalFileFunc is not null ? await LoadLocalFileFunc(name) : null;
+
+    /// <summary>List all file names stored in localStorage.</summary>
+    public async Task<List<string>> ListLocalFilesAsync() =>
+        ListLocalFilesFunc is not null ? await ListLocalFilesFunc() : [];
+
+    /// <summary>Delete a file from localStorage. Returns true if it existed.</summary>
+    public async Task<bool> DeleteLocalFileAsync(string name) =>
+        DeleteLocalFileFunc is not null ? await DeleteLocalFileFunc(name) : false;
 
     // ---- Screen buffer operations ----
 
@@ -458,7 +485,10 @@ public sealed class App
                     buf.RemoveRange(pos, buf.Count - pos);
                     break;
                 default:
-                    if (k.Length == 1 && char.IsLetterOrDigit(k[0]))
+                    // Accept any printable single character (letters, digits,
+                    // punctuation like = ( ) - * / . , " etc.) — matches the
+                    // Python original which inserts any len(k)==1 key.
+                    if (k.Length == 1 && !char.IsControl(k[0]))
                     {
                         buf.Insert(pos, k[0]);
                         pos++;
@@ -821,10 +851,20 @@ public sealed class App
 
         bool ok = true;
         foreach (var d in targets)
-            ok &= await d.DoSaveAsync();
+        {
+            // Persist to localStorage AND trigger a browser download so the
+            // on-disk copy stays in sync with the persisted one.
+            string json = d.SaveJson();
+            string ext = d.Kind switch { "wp" => Doc.ExtWp, "db" => Doc.ExtDb, _ => Doc.ExtSs };
+            bool saved = await SaveLocalFileAsync(d.Name + ext, json);
+            if (saved)
+                await DownloadFile(d.Name + ext, json);
+            d.Dirty = false;
+            ok &= saved;
+        }
 
-        if (ok && targets.Count > 1)
-            Msg = Localizer.T("SavedNFiles", targets.Count);
+        if (!ok) return;
+        Msg = Localizer.T("SavedNFiles", targets.Count);
     }
 
     public async Task RemoveMenuAsync()
@@ -834,10 +874,20 @@ public sealed class App
         if (d.Dirty)
         {
             bool? ans = await YesNoAsync(Localizer.T("HasChangesSaveBeforeRemoving", d.Name), true);
-            if (ans is null || (ans == true && !await d.DoSaveAsync())) return;
+            if (ans is null) return;
+            if (ans == true)
+            {
+                // Download a copy before removing (the file will be deleted from
+                // localStorage below, so a plain DoSaveAsync would be pointless).
+                await d.DoDownloadAsync();
+            }
         }
         Desktop.Remove(d);
         if (ReferenceEquals(Current, d)) Current = null;
+
+        // Also remove from localStorage so it doesn't reappear on next startup.
+        await DeleteLocalFileAsync(d.Name + d.Ext);
+
         Msg = Localizer.T("RemovedFromDesktop", d.Name);
     }
 
@@ -847,7 +897,7 @@ public sealed class App
         int sel = 0;
         while (true)
         {
-            var items = Spaced(["MemorySize", "ChooseLanguage", "Theme", "AboutRetroWorks"]);
+            var items = Spaced(["MemorySize", "ChooseLanguage", "Theme", "CrtEmulation", "AboutRetroWorks"]);
             int? i = await SelectAsync(P, items, sel);
             if (i is null) return;
             sel = i.Value;
@@ -857,7 +907,11 @@ public sealed class App
                 case 0: await MemoryMenuAsync(P); break;
                 case 1: await LanguageMenuAsync(P); break;
                 case 2: await ThemeMenuAsync(P); break;
-                case 3: await ShowTextAsync(Localizer.S("AboutRetroWorks"), Localizer.Help("About").Split('\n')); break;
+                case 3:
+                    CrtEmulation = !CrtEmulation;
+                    Msg = Localizer.T("CrtEmulationState", CrtEmulation ? "on" : "off");
+                    break;
+                case 4: await ShowTextAsync(Localizer.S("AboutRetroWorks"), Localizer.Help("About").Split('\n')); break;
             }
         }
     }
@@ -896,11 +950,14 @@ public sealed class App
 
     private async Task ThemeMenuAsync(List<string> path)
     {
+        // Items are RESX keys — SelectAsync calls Localizer.S() on each, so the
+        // friendly name ("Green phosphor") is shown. The selected line gets
+        // reverse-video highlighting automatically; no asterisk needed.
         var items = new List<object?>
         {
             ("h", Localizer.S("Theme")), null,
-            "GreenPhosphor" + (Theme == "green" ? "  *" : ""),
-            "AmberPhosphor" + (Theme == "amber" ? "  *" : "")
+            "GreenPhosphor",
+            "AmberPhosphor"
         };
         var themePath = new List<string>(path) { "Theme" };
         int? i = await SelectAsync(themePath, items, Theme == "green" ? 0 : 1);
@@ -908,7 +965,13 @@ public sealed class App
         Theme = i == 0 ? "green" : "amber";
     }
 
-    private async Task<bool> QuitAsync()
+    /// <summary>
+    /// Quit = power cycle. Saves any dirty files to disk, then returns "RESTART"
+    /// so the app goes back through the splash screen and re-restores the
+    /// desktop from localStorage — like switching a real machine off and on.
+    /// Returns null if the user cancels.
+    /// </summary>
+    private async Task<string?> QuitAsync()
     {
         bool hadChanges = false;
         foreach (var d in Desktop.ToList())
@@ -916,11 +979,11 @@ public sealed class App
             if (!d.Dirty) continue;
             hadChanges = true;
             bool? ans = await YesNoAsync(Localizer.T("SaveChangesBeforeQuitting", d.Name), true);
-            if (ans is null) return false;
-            if (ans == true && !await d.DoSaveAsync()) return false;
+            if (ans is null) return null;
+            if (ans == true && !await d.DoSaveAsync()) return null;
         }
-        if (hadChanges) return true;
-        return await YesNoAsync("ReallyQuit", false) == true;
+        if (hadChanges) return "RESTART";
+        return await YesNoAsync("ReallyQuit", false) == true ? "RESTART" : null;
     }
 
     // ---- Main loop ----
@@ -1014,16 +1077,53 @@ public sealed class App
                 case 3: await RemoveMenuAsync(); break;
                 case 4: await OtherActivitiesAsync(); break;
                 case 5:
-                    if (await QuitAsync()) return;
+                    var quit = await QuitAsync();
+                    if (quit is null) continue;          // cancelled — stay in the menu
+                    Current = null;
+                    Desktop.Clear();                     // power off: desktop is rebuilt from disk
+                    await SplashAsync();                 // power on again
+                    await RestoreDesktopFromLocalAsync();
                     break;
             }
         }
     }
 
-    /// <summary>Entry point: splash then main menu.</summary>
+    /// <summary>Restore previously saved files from localStorage onto the Desktop.</summary>
+    private async Task RestoreDesktopFromLocalAsync()
+    {
+        List<string> names;
+        try { names = await ListLocalFilesAsync(); }
+        catch { return; }   // interop not ready — start with an empty desktop
+
+        int skipped = 0;
+        foreach (var name in names)
+        {
+            if (Desktop.Count >= MaxDesktop) { skipped++; continue; }
+            string? json = await LoadLocalFileAsync(name);
+            if (json is null) continue;
+            try
+            {
+                var d = Doc.LoadFromJson(this, json);
+                if (d is null) continue;
+                // The saved file name carries the extension ("REPORT.rwp"); strip it.
+                int dot = name.LastIndexOf('.');
+                if (dot > 0) d.Name = Text.SafeName(name[..dot]);
+                Desktop.Add(d);
+            }
+            catch { skipped++; }   // corrupt entry — leave it in storage, don't crash
+        }
+
+        if (Desktop.Count > 0)
+            Msg = Localizer.T("RestoredNFiles", Desktop.Count);
+        if (skipped > 0)
+            Msg += " " + Localizer.T("SkippedNFiles", skipped);
+    }
+
+    /// <summary>Entry point: splash, restore saved files, then main menu.</summary>
     public async Task RunAsync()
     {
         await SplashAsync();
+        await RestoreDesktopFromLocalAsync();
         await MainMenuAsync();
     }
 

@@ -200,7 +200,9 @@ public sealed class DBDoc : Doc
         var rows = Rows();
         int n = rows.Count;
 
-        if (k.Length == 1 && char.IsLetterOrDigit(k[0]))
+        // Any single printable character starts a field edit — matches the
+        // Python original (len(k)==1).
+        if (k.Length == 1)
         {
             if (n == 0) App.Msg = Localizer.S("PressAltNToAddRecord");
             else await EditAsync(k);

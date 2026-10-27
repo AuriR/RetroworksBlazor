@@ -63,22 +63,46 @@ public abstract class Doc
         return JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    /// <summary>Save: serialize and trigger a browser download. Returns true on success.</summary>
+    /// <summary>The file extension for this doc type.</summary>
+    public string Ext => Kind switch { "wp" => ExtWp, "db" => ExtDb, _ => ExtSs };
+
+    /// <summary>Save: serialize and persist to browser localStorage. Returns true on success.</summary>
     public async Task<bool> DoSaveAsync()
     {
         try
         {
             string json = SaveJson();
-            string ext = Kind switch { "wp" => ExtWp, "db" => ExtDb, _ => ExtSs };
-            await App.DownloadFile(Name + ext, json);
-            Dirty = false;
-            App.Msg = Localizer.T("SavedNameToFile", Name, Name + ext);
-            return true;
+            bool ok = await App.SaveLocalFileAsync(Name + Ext, json);
+            if (ok)
+            {
+                Dirty = false;
+                App.Msg = Localizer.T("SavedNameToDisk", Name, Name + Ext);
+            }
+            else
+            {
+                App.Msg = Localizer.S("CouldNotSaveDisk");
+            }
+            return ok;
         }
         catch (Exception e)
         {
             App.Msg = Localizer.T("CouldNotSave", e.Message);
             return false;
+        }
+    }
+
+    /// <summary>Download the current document content as a file from the browser.</summary>
+    public async Task DoDownloadAsync()
+    {
+        try
+        {
+            string json = SaveJson();
+            await App.DownloadFile(Name + Ext, json);
+            App.Msg = Localizer.T("DownloadedName", Name, Name + Ext);
+        }
+        catch (Exception e)
+        {
+            App.Msg = Localizer.T("CouldNotSave", e.Message);
         }
     }
 
@@ -121,6 +145,11 @@ public abstract class Doc
             if (k == Key.Alt("S"))
             {
                 await DoSaveAsync();
+                continue;
+            }
+            if (k == "AS-S")   // Alt+Shift+S → download the file from the browser
+            {
+                await DoDownloadAsync();
                 continue;
             }
             if (k == Key.Alt("K") || k == Key.F1)

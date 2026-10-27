@@ -361,6 +361,7 @@ public sealed class WPDoc : Doc
 
             case "A-F": await FindAsync(); break;
             case "A-R": await ReplaceAllAsync(); break;
+            case "A-W": await SpellCheckAsync(); break;
             case "A-P": await ExportAsync(); break;
         }
     }
@@ -421,6 +422,153 @@ public sealed class WPDoc : Doc
         App.Msg = Localizer.T("ReplacedNOccurrences", total);
     }
 
+    // ---- Spell Check (Alt-W) ----
+
+    /// <summary>
+    /// Retro-style spell check: scans the document for unknown Latin words and
+    /// offers to replace, ignore, or skip each one. Hebrew text is skipped.
+    /// </summary>
+    private async Task SpellCheckAsync()
+    {
+        int H = App.MinH, W = App.MinW;
+        var ignored = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        int checkedCount = 0, replacedCount = 0;
+
+        // A document spell check always starts at the top — save the user's
+        // cursor and restore it when we finish (or they cancel).
+        int savePi = _pi, saveCi = _ci;
+        _pi = 0; _ci = 0;
+
+        while (true)
+        {
+            // Find the next unknown word at or after the scan position.
+            var hit = NextUnknownWord(ignored);
+            if (hit is null) break;
+
+            var (pi, start, end, word) = hit.Value;
+            checkedCount++;
+
+            // Position the cursor on the flagged word.
+            _pi = pi; _ci = start;
+            Draw();
+
+            // Build the prompt line:  WORD   [1]word2  [2]word3  (A)accept (R)eplace (I)gnore (S)kip
+            string? s1 = null, s2 = null;
+            var sugg = SpellCheck.Suggest(word);
+            if (sugg.Count > 0) s1 = sugg[0];
+            if (sugg.Count > 1) s2 = sugg[1];
+
+            string prompt = Localizer.S("SpellPrompt");   // "Spelling:"
+            string line = $"{prompt} {word}";
+            if (s1 is not null) line += $"  [1]{s1}";
+            if (s2 is not null) line += $"  [2]{s2}";
+            // Key legend, e.g. "[A]ccept [R]eplace [I]gnore [S]kip" — localizable.
+            line += "   " + Localizer.S("SpellKeys");
+
+            App.Put(H - 1, 0, new string(' ', W));
+            App.Put(H - 1, 0, line[..Math.Min(W, line.Length)], App.A_B);
+            // Draw() already placed the blinking cursor on the word (via _pi/_ci).
+
+            // Wait for the user's choice.
+            while (true)
+            {
+                string k = await App.KeyAsync();
+                if (k == Key.Escape) { _pi = savePi; _ci = saveCi; App.CursorAt = null; return; }   // cancel
+
+                char c = k.Length == 1 ? char.ToLowerInvariant(k[0]) : '\0';
+
+                string? chosen = null;    // replacement text, if the user picked one
+                bool acceptAsIs = false;   // A / I — treat word as fine for this session
+
+                switch (c)
+                {
+                    case 'a':
+                    case 'i':
+                        acceptAsIs = true;
+                        break;
+                    case '1' when s1 is not null: chosen = s1; break;
+                    case '2' when s2 is not null: chosen = s2; break;
+                    case 'r':
+                        if (s1 is not null) { chosen = s1; }
+                        else
+                        {
+                            App.Put(H - 1, 0, new string(' ', W));
+                            var typed = await App.AskAsync("SpellReplaceWith", word);
+                            if (typed is null) { _pi = savePi; _ci = saveCi; App.CursorAt = null; return; }
+                            chosen = typed;
+                        }
+                        break;
+                    case 's':
+                        break;   // skip — no change, just advance past it
+                    default:
+                        continue;   // not a spell-check key; keep waiting
+                }
+
+                if (acceptAsIs)
+                {
+                    ignored.Add(word);   // won't be flagged again this session
+                    _ci = end;           // advance past it
+                    break;
+                }
+                else if (chosen is not null)
+                {
+                    ReplaceWord(pi, start, end, chosen);
+                    replacedCount++;
+                    break;
+                }
+                else   // skip
+                {
+                    _ci = end;           // move past so we don't re-flag this occurrence
+                    break;
+                }
+            }
+        }
+
+        _pi = savePi; _ci = saveCi;   // restore the user's original cursor
+        App.CursorAt = null;
+        App.Msg = Localizer.T("SpellDone", checkedCount, replacedCount);
+    }
+
+    /// <summary>Find the next unknown Latin word at or after the cursor position.</summary>
+    private (int pi, int start, int end, string word)? NextUnknownWord(HashSet<string> ignored)
+    {
+        var hit = SpellCheck.NextWord(Paras, _pi, _ci);
+        if (hit is null) return null;
+        var (pi, start, end, word) = hit.Value;
+        if (SpellCheck.IsKnown(word) || ignored.Contains(word))
+            return NextUnknownWordAfter(pi, end, ignored);
+        return (pi, start, end, word);
+    }
+
+    private (int pi, int start, int end, string word)? NextUnknownWordAfter(int pi, int ci, HashSet<string> ignored)
+    {
+        var hit = SpellCheck.NextWord(Paras, pi, ci);
+        if (hit is null) return null;
+        var (p2, s2, e2, w2) = hit.Value;
+        if (SpellCheck.IsKnown(w2) || ignored.Contains(w2))
+            return NextUnknownWordAfter(p2, e2, ignored);
+        return (p2, s2, e2, w2);
+    }
+
+    /// <summary>Replace a word in the paragraph, preserving style codes.</summary>
+    private void ReplaceWord(int pi, int start, int end, string replacement)
+    {
+        string p = Paras[pi];
+        string st = Sty[pi];
+
+        // Build new paragraph: before + replacement + after.
+        string newP = p[..start] + replacement + p[end..];
+
+        // Style: keep the style of the first char of the old word for all new chars.
+        string styleCode = st.Length > start ? st[start].ToString() : "0";
+        string newSt = st[..start] + new string(styleCode[0], replacement.Length) + st[end..];
+
+        Paras[pi] = newP;
+        Sty[pi] = newSt;
+        _ci = start + replacement.Length;
+        Dirty = true;
+    }
+
     private async Task ExportAsync()
     {
         string? fn = await ExportPathAsync(".txt", "PrintToTextFile");
@@ -444,4 +592,7 @@ public sealed class WPDoc : Doc
         await DownloadText(fn, string.Join('\n', lines) + '\n');
         App.Msg = Localizer.T("PrintedNLinesToFile", lines.Count, fn);
     }
+
+    /// <summary>Help text for the Word Processor (includes spell check).</summary>
+    protected override string HelpText() => Localizer.Help("WP");
 }

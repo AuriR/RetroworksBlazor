@@ -34,6 +34,10 @@
   <data name="File" xml:space="preserve"><value>File: {0}</value></data>
   <data name="KindHelp" xml:space="preserve"><value>{0} Help</value></data>
   <data name="ClipboardEmpty" xml:space="preserve"><value>The clipboard is empty.</value></data>
+  <data name="SpellPrompt" xml:space="preserve"><value>Spelling:</value></data>
+  <data name="SpellKeys" xml:space="preserve"><value>[A]ccept [R]eplace [I]gnore [S]kip</value></data>
+  <data name="SpellReplaceWith" xml:space="preserve"><value>Replace {0} with:</value></data>
+  <data name="SpellDone" xml:space="preserve"><value>Spell check done: {0} word(s) checked, {1} replaced.</value></data>
   <data name="CouldNotWriteFile" xml:space="preserve"><value>Could not write file: {0}</value></data>
   <data name="ThanksForUsing" xml:space="preserve"><value>Thanks for using RetroWorks ][.  Your files are in memory.</value></data>
 
@@ -84,8 +88,13 @@
   <data name="SaveWhichFile" xml:space="preserve"><value>Save which file?</value></data>
   <data name="AllChangedFiles" xml:space="preserve"><value>All changed files</value></data>
   <data name="NothingToSave" xml:space="preserve"><value>Nothing to save: no file has changed.</value></data>
-  <data name="SavedNFiles" xml:space="preserve"><value>Saved {0} file(s) (downloaded).</value></data>
+  <data name="SavedNFiles" xml:space="preserve"><value>Saved {0} file(s) to disk (downloaded).</value></data>
   <data name="SavedNameToFile" xml:space="preserve"><value>"{0}" saved (downloaded as {1}).</value></data>
+  <data name="SavedNameToDisk" xml:space="preserve"><value>"{0}" saved to disk ({1}).</value></data>
+  <data name="CouldNotSaveDisk" xml:space="preserve"><value>Could not save to disk (storage full or unavailable).</value></data>
+  <data name="DownloadedName" xml:space="preserve"><value>"{0}" downloaded as {1}.</value></data>
+  <data name="RestoredNFiles" xml:space="preserve"><value>{0} file(s) restored from disk.</value></data>
+  <data name="SkippedNFiles" xml:space="preserve"><value>({0} skipped — desktop full or unreadable.)</value></data>
   <data name="CouldNotSave" xml:space="preserve"><value>Could not save: {0}</value></data>
   <data name="RemoveFiles" xml:space="preserve"><value>Remove Files</value></data>
   <data name="HasChangesSaveBeforeRemoving" xml:space="preserve"><value>"{0}" has changes. Save it before removing?</value></data>
@@ -97,6 +106,8 @@
   <data name="Theme" xml:space="preserve"><value>Monitor theme</value></data>
   <data name="GreenPhosphor" xml:space="preserve"><value>Green phosphor</value></data>
   <data name="AmberPhosphor" xml:space="preserve"><value>Amber phosphor</value></data>
+  <data name="CrtEmulation" xml:space="preserve"><value>CRT display emulation (on/off)</value></data>
+  <data name="CrtEmulationState" xml:space="preserve"><value>CRT display emulation is {0}.</value></data>
   <data name="Language" xml:space="preserve"><value>Language</value></data>
   <data name="MemorySizeTitle" xml:space="preserve"><value>Memory Size</value></data>
   <data name="HowMuchMemory" xml:space="preserve"><value>How much memory does this computer have?</value></data>
@@ -237,12 +248,15 @@ Alt-X ............ cut paragraph       Alt-C ........... copy paragraph
 Alt-V ............ paste paragraph(s) above the cursor
 
 Alt-F ............ find (again)        Alt-R ........... replace all
+Alt-W ............ spell check: 1/2=pick A=accept R=replace I=gnore S=kip
+                  (English words only; Hebrew text is not checked)
 Alt-P ............ "print" to a plain .txt file (76 columns, download)
 Alt-L ............ paragraph direction: left-to-right / right-to-left
 Alt-B ............ bold on / off       Alt-U ........... underline on / off
 
-Alt-S ............ save (download)     Alt-Q ........... quick change
-Escape ............ Main Menu           Alt-K ........... this help
+Alt-S ............ save to disk        Alt-Shift-S ..... download file
+Alt-Q ............ quick change         Alt-K / F1 ...... this help
+Escape ............ Main Menu
 
 Bold and underline apply to what you type next; press the key again
 to turn them off. Printing to a .txt file keeps the text only.
@@ -275,8 +289,8 @@ Alt-C / Alt-X / Alt-V .. copy / cut / paste a cell (formulas adjust)
 Alt-R ............ replicate the cell down/across to a target cell
 Alt-N ............ insert a row      Alt-D ........... delete the row
 Alt-W ............ column width      Alt-P ........... export values to CSV
-Alt-S ............ save              Alt-Q ........... quick change
-Escape ............ Main Menu         Alt-K ........... this help</value></data>
+Alt-S ............ save to disk      Alt-Shift-S ..... download file
+Alt-Q ............ quick change      Escape .......... Main Menu / Alt-K help</value></data>
 
   <data name="HelpDB" xml:space="preserve"><value>DATA BASE COMMANDS               (Alt replaces the Open-Apple key)
 
@@ -300,7 +314,10 @@ Alt-A ............ arrange (sort) by this category; again = reverse
 Alt-E ............ change categories: rename, insert, delete, move
 Alt-W ............ width of this category in the table
 Alt-P ............ export the selected records to CSV
-Alt-S ............ save              Alt-Q ........... quick change
-Escape ............ Main Menu         Alt-K ........... this help</value></data>
+Alt-S ............ save to disk      Alt-Shift-S ..... download file
+Alt-Q ............ quick change      Escape .......... Main Menu / Alt-K help</value></data>
 
 </root>
+
+
+

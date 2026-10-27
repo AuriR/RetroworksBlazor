@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RetroWorks")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+06d9e2f6802b32f9ed4865c7da8841ac6db7aa61")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f4b069098e6832ccc8668d76e336defca6d57a01")]
 [assembly: System.Reflection.AssemblyProductAttribute("RetroWorks")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RetroWorks")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

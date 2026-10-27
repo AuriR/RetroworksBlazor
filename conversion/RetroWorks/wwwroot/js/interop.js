@@ -28,6 +28,11 @@ function mapKey(e) {
         case 'F1': return 'F1';
     }
 
+    // Alt+Shift + letter → "AS-X" (download variant of an Alt command)
+    if (e.altKey && e.shiftKey && k.length === 1) {
+        return 'AS-' + k.toUpperCase();
+    }
+
     // Alt + letter → "A-X" (Alt replaces the Open-Apple modifier)
     if (e.altKey && k.length === 1) {
         return 'A-' + k.toUpperCase();
@@ -100,11 +105,13 @@ export function reportError(msg) {
 }
 
 /**
- * Set the phosphor theme on the document root ("green" or "amber").
+ * Set the phosphor theme ("green"/"amber") and CRT emulation on the root.
  */
-export function setTheme(theme) {
+export function setTheme(theme, crt) {
     if (theme === 'amber') document.documentElement.setAttribute('data-theme', 'amber');
     else document.documentElement.removeAttribute('data-theme');
+    if (crt) document.documentElement.classList.add('crt-on');
+    else document.documentElement.classList.remove('crt-on');
 }
 
 /**
@@ -154,4 +161,55 @@ export async function loadFile(accept) {
         // Safety net: if neither event fires, give up after a while.
         setTimeout(() => done(null), 120000);
     });
+}
+
+// ---- localStorage persistence (RetroWorks "disk") -------------------------
+// Saved files live under one namespaced key so they survive refresh/restart.
+
+const LS_KEY = 'retroworks.files';
+
+function readStore() {
+    try {
+        const raw = localStorage.getItem(LS_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch {
+        return {};   // corrupt store → start fresh rather than crash the app
+    }
+}
+
+function writeStore(store) {
+    localStorage.setItem(LS_KEY, JSON.stringify(store));
+}
+
+/** Save a file's JSON content to localStorage. Returns true on success. */
+export function saveLocalFile(name, json) {
+    try {
+        const store = readStore();
+        store[name] = json;
+        writeStore(store);
+        return true;
+    } catch (e) {
+        console.error('[RetroWorks] localStorage save failed:', e);
+        return false;
+    }
+}
+
+/** Load a file's JSON content from localStorage, or null if absent. */
+export function loadLocalFile(name) {
+    const store = readStore();
+    return Object.prototype.hasOwnProperty.call(store, name) ? store[name] : null;
+}
+
+/** List all saved file names (with extensions). */
+export function listLocalFiles() {
+    return Object.keys(readStore());
+}
+
+/** Delete a file from localStorage. Returns true if it existed. */
+export function deleteLocalFile(name) {
+    const store = readStore();
+    if (!Object.prototype.hasOwnProperty.call(store, name)) return false;
+    delete store[name];
+    writeStore(store);
+    return true;
 }

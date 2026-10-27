@@ -58,9 +58,14 @@ html, body {
     font-size: inherit;
 }
 
-/* Attribute classes (A_B=bold, A_U=underline, A_R=reverse) */
-.a-b { font-weight: bold; }
-.a-u { text-decoration: underline; }
+/* Attribute classes.
+   NOTE: The Apple II text mode had NO bold or underline — the fixed-width
+   bitmap font was the only font. Bold/underline were purely *data* attributes
+   (for dot-matrix printing), never rendered on screen. So .a-b and .a-u are
+   intentionally empty: they carry no visual effect, matching hardware reality.
+   The attribute bits still exist in the data model for toggling & export. */
+.a-b { /* intentionally blank — Apple II had no bold text mode */ }
+.a-u { /* intentionally blank — Apple II had no underline text mode */ }
 .a-r {
     background: var(--fg-green);
     color: var(--bg);
@@ -102,4 +107,42 @@ html, body {
     inset: 0;
     pointer-events: none;
     background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+/* ---- CRT display emulation (toggle via Other Activities → CRT Emulation) ----
+   Applied to the grid when <html> carries .crt-on. Adds a screen-door /
+   scanline overlay and rounded "glass" edges, like an old Apple II monitor.
+   Colors derive from the active phosphor theme vars so it works for both
+   green and amber. Based on Dovid Edelkopf's CSS CRT technique (Medium). */
+
+html.crt-on .retro-screen {
+    position: relative;
+    border-radius: 20px;          /* rounded glass edges */
+    overflow: hidden;             /* clip the overlay to the rounded shape */
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.55);   /* curved-tube falloff */
+}
+
+/* Screen-door + scanline overlay. Two stacked gradients: a fine horizontal
+   line pattern (the "door") and a faint RGB sub-pixel tint across the width.
+   The slow background-position drift gives the subtle rolling-scanline feel. */
+html.crt-on .retro-screen::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 2;
+    border-radius: inherit;
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.28) 50%, rgba(0, 0, 0, 0) 50%),
+        linear-gradient(90deg,
+            rgba(255, 0, 0, 0.06),
+            rgba(0, 255, 0, 0.02),
+            rgba(0, 0, 255, 0.06));
+    background-size: 100% 2px, 3px 100%;
+    animation: crt-scanlines 8s linear infinite;
+}
+
+@keyframes crt-scanlines {
+    0%   { background-position: 0 0, 0 0; }
+    100% { background-position: 0 -4px, 0 0; }
 }

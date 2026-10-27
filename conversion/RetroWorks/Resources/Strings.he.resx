@@ -34,6 +34,10 @@
   <data name="File" xml:space="preserve"><value>קובץ: {0}</value></data>
   <data name="KindHelp" xml:space="preserve"><value>עזרה - {0}</value></data>
   <data name="ClipboardEmpty" xml:space="preserve"><value>הלוח ריק.</value></data>
+  <data name="SpellPrompt" xml:space="preserve"><value>איות:</value></data>
+  <data name="SpellKeys" xml:space="preserve"><value>[A]קבל [R]החלף [I]התעלם [S]דילוג</value></data>
+  <data name="SpellReplaceWith" xml:space="preserve"><value>החלף {0} ב:</value></data>
+  <data name="SpellDone" xml:space="preserve"><value>בדיקת איות הושלמה: נבדקו {0} מילים, הוחלפו {1}.</value></data>
   <data name="CouldNotWriteFile" xml:space="preserve"><value>לא ניתן לכתוב את הקובץ: {0}</value></data>
   <data name="ThanksForUsing" xml:space="preserve"><value>תודה שהשתמשת ב-RetroWorks ][.  הקבצים שלך בזיכרון.</value></data>
 
@@ -84,8 +88,13 @@
   <data name="SaveWhichFile" xml:space="preserve"><value>איזה קובץ לשמור?</value></data>
   <data name="AllChangedFiles" xml:space="preserve"><value>כל הקבצים ששונו</value></data>
   <data name="NothingToSave" xml:space="preserve"><value>אין מה לשמור: אף קובץ לא שונה.</value></data>
-  <data name="SavedNFiles" xml:space="preserve"><value>{0} קבצים נשמרו (הורדה).</value></data>
+  <data name="SavedNFiles" xml:space="preserve"><value>{0} קבצים נשמרו לדיסק (והורדו).</value></data>
   <data name="SavedNameToFile" xml:space="preserve"><value>"{0}" נשמר (הורד כ-{1}).</value></data>
+  <data name="SavedNameToDisk" xml:space="preserve"><value>"{0}" נשמר לדיסק ({1}).</value></data>
+  <data name="CouldNotSaveDisk" xml:space="preserve"><value>לא ניתן לשמור לדיסק (האחסון מלא או לא זמין).</value></data>
+  <data name="DownloadedName" xml:space="preserve"><value>"{0}" הורד כ-{1}.</value></data>
+  <data name="RestoredNFiles" xml:space="preserve"><value>{0} קבצים שוחזרו מהדיסק.</value></data>
+  <data name="SkippedNFiles" xml:space="preserve"><value>({0} דולגו — שולחן העבודה מלא או הקובץ אינו קריא.)</value></data>
   <data name="CouldNotSave" xml:space="preserve"><value>השמירה נכשלה: {0}</value></data>
   <data name="RemoveFiles" xml:space="preserve"><value>הסרת קבצים</value></data>
   <data name="HasChangesSaveBeforeRemoving" xml:space="preserve"><value>יש שינויים ב-"{0}". לשמור לפני ההסרה?</value></data>
@@ -97,6 +106,8 @@
   <data name="Theme" xml:space="preserve"><value>נושא המסך</value></data>
   <data name="GreenPhosphor" xml:space="preserve"><value>זכוכית ירוקה</value></data>
   <data name="AmberPhosphor" xml:space="preserve"><value>זכוכית אמבר</value></data>
+  <data name="CrtEmulation" xml:space="preserve"><value>דמו מסך CRT (פועל/כבוי)</value></data>
+  <data name="CrtEmulationState" xml:space="preserve"><value>דמו מסך CRT {0}.</value></data>
   <data name="Language" xml:space="preserve"><value>שפה</value></data>
   <data name="MemorySizeTitle" xml:space="preserve"><value>גודל הזיכרון</value></data>
   <data name="HowMuchMemory" xml:space="preserve"><value>כמה זיכרון יש במחשב הזה?</value></data>
@@ -245,11 +256,14 @@ Alt-X / C     גזירה / העתקה של הפסקה
 Alt-V         הדבקה מעל הסמן
 Alt-F         חיפוש (שוב)
 Alt-R         החלפת הכול
+Alt-W         בדיקת איות: 1/2=בחירה A=קבל R=החלף I=התעלם S=דילוג
+              (מילים באנגלית בלבד; טקסט בעברית אינו נבדק)
 Alt-L         כיוון הפסקה: ימין לשמאל / שמאל לימין
 Alt-B         הדגשה (Bold) פועלת / כבויה
 Alt-U         קו תחתון פועל / כבוי
 Alt-P         "הדפסה" לקובץ טקסט (76 עמודות, הורדה)
-Alt-S         שמירה (הורדה)
+Alt-S         שמירה לדיסק
+Alt-Shift-S   הורדת הקובץ
 Alt-Q         מעבר מהיר לקובץ אחר
 Escape        תפריט ראשי
 
@@ -284,7 +298,8 @@ Alt-N         הוספת שורה
 Alt-D         מחיקת שורה
 Alt-W         רוחב עמודה
 Alt-P         ייצוא הערכים ל-CSV (הורדה)
-Alt-S         שמירה
+Alt-S         שמירה לדיסק
+Alt-Shift-S   הורדת הקובץ
 Alt-Q         מעבר מהיר לקובץ אחר
 Escape        תפריט ראשי</value></data>
 
@@ -304,7 +319,8 @@ Alt-A         מיון לפי הקטגוריה הזו; שוב = סדר הפוך
 Alt-E         שינוי קטגוריות: שם, הוספה, מחיקה, הזזה
 Alt-W         רוחב הקטגוריה בטבלה
 Alt-P         ייצוא הרשומות הנבחרות ל-CSV (הורדה)
-Alt-S         שמירה
+Alt-S         שמירה לדיסק
+Alt-Shift-S   הורדת הקובץ
 Alt-Q         מעבר מהיר לקובץ אחר
 Escape        תפריט ראשי</value></data>
 

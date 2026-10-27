@@ -34,6 +34,16 @@
         _app.LoadFileFunc = async accept =>
             await _jsModule.InvokeAsync<string>("loadFile", accept);
 
+        // localStorage persistence ("the disk" that survives refresh/restart).
+        _app.SaveLocalFileFunc = async (name, json) =>
+            await _jsModule.InvokeAsync<bool>("saveLocalFile", name, json);
+        _app.LoadLocalFileFunc = async name =>
+            await _jsModule.InvokeAsync<string?>("loadLocalFile", name);
+        _app.ListLocalFilesFunc = async () =>
+            await _jsModule.InvokeAsync<List<string>>("listLocalFiles");
+        _app.DeleteLocalFileFunc = async name =>
+            await _jsModule.InvokeAsync<bool>("deleteLocalFile", name);
+
         // Register the global keydown handler that calls back into THIS component
         // (the [JSInvokable] OnKey method lives here, not on Core.App).
         _appRef = DotNetObjectReference.Create(this);
@@ -58,11 +68,11 @@
         StateHasChanged();
     }
 
-    /// <summary>Apply the App's theme ("green"/"amber") to the document root.</summary>
+    /// <summary>Apply the App's theme ("green"/"amber") and CRT emulation to the document root.</summary>
     private void SyncTheme()
     {
         if (_jsModule is not null)
-            _ = _jsModule.InvokeVoidAsync("setTheme", _app.Theme);
+            _ = _jsModule.InvokeVoidAsync("setTheme", _app.Theme, _app.CrtEmulation);
     }
 
     [JSInvokable]
