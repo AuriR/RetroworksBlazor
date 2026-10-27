@@ -1,12 +1,14 @@
-# RetroWorks ][
+# RetroWorks II
 
 An integrated **Word Processor, Data Base and Spreadsheet** in the style of the
-80‑column, green‑screen productivity software of the Apple ][ years, rebuilt
+80‑column, green‑screen productivity software of the Apple II years, rebuilt
 for today's web browser.
 
 Originally a Python program, and ported to Blazor WASM.
+
 Original Python: https://github.com/udiweinstein/RetroWorks
-Blazor Port ported with Local AI / Qwen 3.8.
+
+Blazor WASM ported with Local AI / Qwen 3.8 from the original Python.
 
 ![Main Menu](screenshots/main-menu.png)
 ![Add Files](screenshots/add-files-menu.png)
@@ -51,10 +53,12 @@ Runs as a Blazor WASM site. You can also try it at https://appleworks.auri.net.
 ## About
 
 Original Python:
+
 Written with Claude (Anthropic's AI). RetroWorks is an independent program
 written from scratch. It is **not AppleWorks**, contains no Apple code, and is
 not affiliated with or endorsed by Apple Inc.
 
 Blazor WASM:
+
 Same deal, but using llama.cpp and Qwen 3.8. Probably others by the time you read this.
 
