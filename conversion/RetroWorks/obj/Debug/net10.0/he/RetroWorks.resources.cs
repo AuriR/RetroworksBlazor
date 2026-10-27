@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RetroWorks")]
 [assembly: System.Reflection.AssemblyCopyrightAttribute(" ")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f4b069098e6832ccc8668d76e336defca6d57a01")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+920b54e40442eb29376bfbd5e9faa8093bbf899b")]
 [assembly: System.Reflection.AssemblyProductAttribute("RetroWorks")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RetroWorks")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

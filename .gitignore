@@ -363,3 +363,8 @@ MigrationBackup/
 FodyWeavers.xsd
 /_Archive
 /.idea/.idea.Liq/.idea
+conversion/RetroWorks/bin/Debug/net10.0/RetroWorks.dll
+conversion/RetroWorks/bin/Debug/net10.0/RetroWorks.pdb
+conversion/RetroWorks/bin/Debug/net10.0/RetroWorks.staticwebassets.endpoints.json
+conversion/RetroWorks/bin/Debug/net10.0/RetroWorks.staticwebassets.runtime.json
+conversion/RetroWorks/bin/Debug/net10.0/he/RetroWorks.resources.dll

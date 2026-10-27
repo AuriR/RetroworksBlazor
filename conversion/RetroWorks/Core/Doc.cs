@@ -23,6 +23,13 @@ public abstract class Doc
     public string Name { get; set; }
     public bool Dirty { get; set; }
 
+    /// <summary>
+    /// The localStorage key this doc was last persisted under (e.g. "REPORT.rwp"),
+    /// or null if it has never been saved to disk. Set on restore so that a later
+    /// rename+save can delete the stale entry instead of orphaning it.
+    /// </summary>
+    public string? SavedKey;
+
     // Clipboard data (shared via App)
     // WP clipboard
     public List<string> ClipWp = [];
@@ -75,6 +82,14 @@ public abstract class Doc
             bool ok = await App.SaveLocalFileAsync(Name + Ext, json);
             if (ok)
             {
+                // If this doc was previously saved under a different name (rename),
+                // delete the stale entry so it can't resurface as a ghost file on
+                // next startup — or worse, be silently overwritten by a new file
+                // that reuses the old name.
+                if (SavedKey is not null && SavedKey != Name + Ext)
+                    await App.DeleteLocalFileAsync(SavedKey);
+                SavedKey = Name + Ext;
+
                 Dirty = false;
                 App.Msg = Localizer.T("SavedNameToDisk", Name, Name + Ext);
             }

@@ -855,11 +855,18 @@ public sealed class App
             // Persist to localStorage AND trigger a browser download so the
             // on-disk copy stays in sync with the persisted one.
             string json = d.SaveJson();
-            string ext = d.Kind switch { "wp" => Doc.ExtWp, "db" => Doc.ExtDb, _ => Doc.ExtSs };
-            bool saved = await SaveLocalFileAsync(d.Name + ext, json);
+            string key = d.Name + d.Ext;
+            bool saved = await SaveLocalFileAsync(key, json);
             if (saved)
-                await DownloadFile(d.Name + ext, json);
-            d.Dirty = false;
+            {
+                // Clean up a stale entry left by an earlier name (rename).
+                if (d.SavedKey is not null && d.SavedKey != key)
+                    await DeleteLocalFileAsync(d.SavedKey);
+                d.SavedKey = key;
+
+                await DownloadFile(key, json);
+                d.Dirty = false;   // only clear on success — a failed write must stay dirty
+            }
             ok &= saved;
         }
 
@@ -1040,7 +1047,36 @@ public sealed class App
         }
     }
 
+    /// <summary>Entry point: splash, restore saved files, then main menu.</summary>
+    public async Task RunAsync()
+    {
+        await SplashAsync();
+        await RestoreDesktopFromLocalAsync();
+        await MainMenuAsync();
+    }
+
+    /// <summary>
+    /// The power-cycle loop. Each iteration is one "machine on" session: the main
+    /// menu (which auto-opens the first desktop file). Quitting saves dirty files,
+    /// powers off (clears the Desktop), and loops back through splash + restore —
+    /// so a restarted session behaves exactly like a cold start.
+    /// </summary>
     public async Task MainMenuAsync()
+    {
+        while (true)
+        {
+            await MainMenuBodyAsync();
+
+            // Quit was confirmed: power off and cycle back through the splash screen.
+            Current = null;
+            Desktop.Clear();
+            await SplashAsync();
+            await RestoreDesktopFromLocalAsync();
+        }
+    }
+
+    /// <summary>One session at the main menu. Returns when the user quits.</summary>
+    private async Task MainMenuBodyAsync()
     {
         var items = Spaced(["AddFilesToDesktop", "WorkWithFileOnDesktop", "SaveDesktopFiles",
             "RemoveFilesFromDesktop", "OtherActivities", "Quit"]);
@@ -1079,11 +1115,7 @@ public sealed class App
                 case 5:
                     var quit = await QuitAsync();
                     if (quit is null) continue;          // cancelled — stay in the menu
-                    Current = null;
-                    Desktop.Clear();                     // power off: desktop is rebuilt from disk
-                    await SplashAsync();                 // power on again
-                    await RestoreDesktopFromLocalAsync();
-                    break;
+                    return;                              // confirmed — MainMenuAsync powers off & cycles
             }
         }
     }
@@ -1098,16 +1130,17 @@ public sealed class App
         int skipped = 0;
         foreach (var name in names)
         {
-            if (Desktop.Count >= MaxDesktop) { skipped++; continue; }
+            if (Desktop.Count >= MaxDesktop || Avail() <= 0) { skipped++; continue; }
             string? json = await LoadLocalFileAsync(name);
             if (json is null) continue;
             try
             {
                 var d = Doc.LoadFromJson(this, json);
-                if (d is null) continue;
+                if (d is null) { skipped++; continue; }
                 // The saved file name carries the extension ("REPORT.rwp"); strip it.
                 int dot = name.LastIndexOf('.');
                 if (dot > 0) d.Name = Text.SafeName(name[..dot]);
+                d.SavedKey = name;   // remember the storage key so a rename can clean it up
                 Desktop.Add(d);
             }
             catch { skipped++; }   // corrupt entry — leave it in storage, don't crash
@@ -1117,14 +1150,6 @@ public sealed class App
             Msg = Localizer.T("RestoredNFiles", Desktop.Count);
         if (skipped > 0)
             Msg += " " + Localizer.T("SkippedNFiles", skipped);
-    }
-
-    /// <summary>Entry point: splash, restore saved files, then main menu.</summary>
-    public async Task RunAsync()
-    {
-        await SplashAsync();
-        await RestoreDesktopFromLocalAsync();
-        await MainMenuAsync();
     }
 
     // ---- Helpers ----
