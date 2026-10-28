@@ -176,7 +176,8 @@ public sealed class DBDoc : Doc
 
     private async Task NewRecordAsync()
     {
-        var rec = new List<string>(new string[Fields.Count]);
+        // NOTE: must use empty strings, not `new string[n]` (which yields nulls in C#).
+        var rec = Enumerable.Repeat("", Fields.Count).ToList();
         InsertRecord(rec);
         _f = 0;
         _adding = true;

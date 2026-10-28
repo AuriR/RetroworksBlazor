@@ -414,18 +414,18 @@ public sealed class App
 
     /// <summary>Single-line text input in a menu layer. Returns text or null on Escape.</summary>
     public async Task<string?> BoxPromptAsync(List<string> path, string labelKey,
-        string initial = "", int width = 30, string? esc = null)
+        string initial = "", int width = 30, string? esc = null, int maxLen = 0)
     {
         if (esc is null) esc = DefaultEsc(path) ?? "EscapeCancel";
         var (L, Tr, B, R) = DrawStack(path, esc!, "TypeEntryThenReturn", Localizer.T("KAavail", Avail()));
         Put(Tr + 3, L + 6, Localizer.S(labelKey)[..Math.Min(Localizer.S(labelKey).Length, R - L - 8)]);
         int w = Math.Max(8, Math.Min(width, R - L - 9));
-        return await LineEditAsync(Tr + 5, L + 6, w, initial);
+        return await LineEditAsync(Tr + 5, L + 6, w, initial, maxLen: maxLen);
     }
 
-    /// <summary>One-line editor. Returns (text, key) — text is null on Escape.</summary>
+    /// <summary>One-line editor. Returns text or null on Escape.</summary>
     private async Task<string?> LineEditAsync(int y, int x, int width, string initial = "",
-        string label = "")
+        string label = "", int maxLen = 0)
     {
         if (label.Length > 0)
         {
@@ -488,7 +488,8 @@ public sealed class App
                     // Accept any printable single character (letters, digits,
                     // punctuation like = ( ) - * / . , " etc.) — matches the
                     // Python original which inserts any len(k)==1 key.
-                    if (k.Length == 1 && !char.IsControl(k[0]))
+                    if (k.Length == 1 && !char.IsControl(k[0])
+                        && (maxLen <= 0 || buf.Count < maxLen))
                     {
                         buf.Insert(pos, k[0]);
                         pos++;
@@ -682,9 +683,9 @@ public sealed class App
     {
         while (true)
         {
-            string? name = await BoxPromptAsync(path, "TypeNameForNewFile");
+            string? name = await BoxPromptAsync(path, "TypeNameForNewFile", maxLen: 30);
             if (name is null) return null;
-            name = Text.Clean(name).Trim()[..Math.Min(30, Text.Clean(name).Trim().Length)];
+            name = Text.Clean(name).Trim();
             if (name.Length == 0) return null;
 
             if (Desktop.Any(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
