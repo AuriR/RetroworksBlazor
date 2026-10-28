@@ -1030,7 +1030,7 @@ public sealed class App
             string date = DateTime.Today.ToString(Localizer.Lang == "en" ? "dddd, dd MMMM yyyy" : "dd/MM/yyyy");
             var lines = new[]
             {
-                Localizer.T("Version", "1.2"),
+                Localizer.T("Version", "1.4"),
                 Localizer.S("OriginalTribute"),
                 Localizer.S("NotAffiliated"),
                 "",
