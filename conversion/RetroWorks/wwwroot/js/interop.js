@@ -47,6 +47,12 @@ function mapKey(e) {
 }
 
 function onKeydown(e) {
+    // If focus is on a native interactive element (e.g. the blazor-error-ui
+    // "Reload" link), let the browser handle it — forwarding Enter to the app
+    // while such an element is focused can trigger a page navigation/reload.
+    const t = e.target;
+    if (t && t.closest && t.closest('a, button, input, select, textarea')) return;
+
     const token = mapKey(e);
     if (token !== null) {
         e.preventDefault();   // stop browser shortcuts / scrolling
