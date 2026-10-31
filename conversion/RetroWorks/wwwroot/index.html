@@ -18,11 +18,9 @@
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <!-- Shown immediately (plain HTML) while the WASM runtime downloads;
+             removed by the script at the bottom once Blazor has booted. -->
+        <div class="boot-loading"><span class="boot-text">LOADING</span><span class="boot-cursor">&#160;</span></div>
     </div>
 
     <div id="blazor-error-ui">
@@ -30,6 +28,18 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+    <script>
+        // Remove the static "LOADING" prompt as soon as Blazor renders its first content.
+        (function () {
+            var app = document.getElementById('app');
+            var boot = app.querySelector('.boot-loading');
+            if (!boot) return;
+            new MutationObserver(function () {
+                boot.remove();
+                this.disconnect();
+            }).observe(app, { childList: true });
+        })();
+    </script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>
 
