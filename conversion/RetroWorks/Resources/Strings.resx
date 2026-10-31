@@ -219,7 +219,7 @@
   <data name="ExportedNRecordsToFile" xml:space="preserve"><value>Exported {0} records to {1}</value></data>
 
   <!-- Help text -->
-  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   version 1.2
+  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   version 1.4
 
 An integrated Word Processor, Data Base and Spreadsheet in the style of
 the 80-column, green-screen productivity software of the Apple ][ years.
@@ -318,6 +318,3 @@ Alt-S ............ save to disk      Alt-Shift-S ..... download file
 Alt-Q ............ quick change      Escape .......... Main Menu / Alt-K help</value></data>
 
 </root>
-
-
-
