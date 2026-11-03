@@ -197,10 +197,33 @@ classDiagram
 The spreadsheet's calculation engine is a self-contained, pure‑C# tokenizer + recursive-descent parser:
 
 - **Cell references:** columns `A–Z`, rows `1–999`. Relative (`A1`) or absolute (`$A$1`).
-- **Tokenizer regex** accepts numbers (with scientific notation), cell refs, functions (`@SUM`, etc.), and operators.
-- **~20 built-in functions:** `SUM`, `AVG`/`AVERAGE`, `MIN`, `MAX`, `COUNT`, `ABS`, `INT`, `SQRT`, `EXP`, `LN`, `LOG`, `SIN`, `COS`, `TAN`, `ATAN`, `ROUND`, `MOD`, `IF`.
+- **Tokenizer regex** accepts numbers (with scientific notation), cell refs, functions (`@SUM`, etc.), string literals (`"text"`), and operators.
+- **Mixed-type values:** a formula evaluates to a number (`double`), text (`string`), or blank. Arithmetic is numeric; `+` concatenates when either side is text (`"a"+"b"` = `"ab"`); comparisons are lexicographic for two texts, numeric otherwise. Cell refs resolve numerically in arithmetic context but to their mixed value inside function arguments (so string functions can read labels).
+- **Built-in functions:**
+  - *Aggregates:* `SUM`, `AVG`/`AVERAGE`, `MIN`, `MAX`, `COUNT` — accept scalars and ranges (`A1:A5`).
+  - *Math:* `ABS`, `INT`, `SQRT`, `EXP`, `LN`, `LOG`, `SIN`, `COS`, `TAN`, `ATAN`, `ROUND`, `MOD`, `IF`, `PI`.
+  - *String:* `Left(s,n)`, `Right(s,n)`, `Mid(s,p,n)`, `Len(s)`, `Upper(s)`, `Lower(s)`, `Join(a,b,…)`, `Find(needle,hay)`, `Text(x,dec)`, `Val(s)` — operate on string literals or cell labels.
+  - *Date/time:* `Today`, `Now`, `Year(d)`, `Month(d)`, `Day(d)` — Excel-style serial dates (days since 1899‑12‑30).
+  - *Lookup:* `Vlookup(key,range,col)` — exact-match search of a range's first column.
 - **Error handling:** circular references and math errors raise a custom `SSError` exception.
-- Reference adjustment (`ShiftRefs`, `FixRows`) keeps relative refs correct when rows/columns are inserted or deleted.
+- Reference adjustment (`ShiftRefs`, `FixRows`, `FixCols`) keeps relative refs correct when rows/columns are inserted or deleted.
+
+### Spreadsheet row & column operations (`Core/SSDoc.cs`)
+
+- **Row insert/delete** (Alt‑N / Alt‑D): shifts cells vertically and rewrites relative row references via `FixRows`.
+- **Column insert/delete** (Alt‑I / Alt‑J): shifts cells horizontally, moves per-column widths, and rewrites relative column references via `FixCols` (`#REF` for deleted targets).
+
+### Spell check dictionary (`Core/SpellCheck.cs`)
+
+Built-in spell checker with an embedded ~5,000-word English dictionary (public-domain frequency list), word extraction by regex, and Levenshtein-distance suggestions (edit distance ≤ 2). Hebrew text is skipped by design.
+
+### Unexpected-error safety net (Error Log document)
+
+Normal formula problems (circular refs, syntax/math errors) raise `SSError` and show as `ERROR` in the cell — expected behaviour. An **unexpected** exception (a bug) must never freeze the app:
+
+- `SSDoc.Value()` has a catch-all after its `SSError`/`StackOverflowException` handlers. It calls `App.LogUnexpectedError(ex, context)`, caches and returns `0` for that cell, so the spreadsheet keeps working.
+- `App.LogUnexpectedError` creates a Word Processor document named `Error Log <yyyy-MM-dd HHmmss>` on the Desktop containing the timestamp, exception type, triggering cell/formula, message, and stack trace — viewable and downloadable like any other file. A recursion guard prevents logging while logging.
+- Because `Draw()` clears the formula cache every frame (which would otherwise re-evaluate a bad formula and create a new log doc on *every* render), `SSDoc.Draw()` sets a `_rendering` flag around `DrawBody()`; the catch-all skips creating a log doc while rendering, so exactly one Error Log is produced per bug.
 
 ### Memory model (the "memory game")
 
@@ -224,7 +247,7 @@ The entire session is driven by a single recursive loop. **Quit = "power cycle"*
 
 ```mermaid
 flowchart TD
-    Start(["Program start: Program.cs → RunAsync()"]) --> Splash["SplashAsync()<br/>(title card + press-Enter hint)"]
+    Start(["Program start: Program.cs → RunAsync()"]) --> Splash["SplashAsync()<br/>(title card + Start / What's New options)"]
     Splash --> Restore["RestoreDesktopFromLocalAsync()<br/>rebuild Desktop from localStorage"]
     Restore --> MainMenu["MainMenuBodyAsync()<br/>auto-open first desktop file if any"]
 
@@ -478,5 +501,6 @@ Consequently, several areas that a typical ASP.NET/.NET architecture doc would c
 |---------|------------|---------------|----------------------------------------------------------------|
 | 1.0     | 2026-10-27 | Copilot SDK   | Initial architecture document for the Blazor WASM port.        |
 | 1.1     | 2026-10-27 | Copilot SDK   | Restored the Component & File Map diagram (lost in earlier edits) and hardened all mermaid diagrams against parse errors (removed HTML entities, unquoted parenthesized subgraph titles, and pipe-delimited edge labels). Now exactly 5 clean diagrams. |
+| 1.5     | 2026-11-02 | Copilot SDK   | App v1.5: splash screen now offers "Start RetroWorks" / "What's New"; spell-check dictionary expanded to ~5,000 words; formula engine gained string/date/lookup functions and mixed-type (number-or-text) values; spreadsheet column insert/delete added; unexpected-exception safety net creates an "Error Log" document on the Desktop instead of freezing. |
 
 > **Maintenance rule.** This document is a living artifact: it must be updated whenever non‑trivial changes are made to the application (new document type, new persistence mechanism, significant refactor of flows, version bumps, etc.). If you change this code and do not update `Architecture.md`, revert the change.
