@@ -18,6 +18,7 @@ public static class FormulaEngine
         @"(\d+(?:\.\d*)?(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?)" +   // number
         @"|(\$?[A-Za-z]\$?\d+)(?![A-Za-z0-9])" +                       // cell ref
         @"|(@?[A-Za-z][A-Za-z0-9]*)" +                                 // function
+        "|(\"[^\"]*\")" +                                              // string literal "..."
         @"|(\.\.\.|\.\.|<=|>=|<>|[-+*/^(),:<>=])",                     // operator
         RegexOptions.Compiled);
 
@@ -67,6 +68,28 @@ public static class FormulaEngine
         return $"{m.Groups[1].Value}{col}{m.Groups[3].Value}{row}";
     });
 
+    /// <summary>Fix references after inserting (+1) or deleting (-1) column `at` (0-based).</summary>
+    public static string FixCols(string raw, int at, int delta) => RefAdjRe.Replace(raw, m =>
+    {
+        bool absC = m.Groups[1].Value == "$";
+        char col = char.ToUpperInvariant(m.Groups[2].Value[0]);
+        bool absR = m.Groups[3].Value == "$";
+        int row = int.Parse(m.Groups[4].Value);
+        int c = col - 'A';
+        if (!absC)
+        {
+            if (delta > 0 && c >= at) c++;
+            else if (delta < 0)
+            {
+                if (c == at) return "#REF";
+                if (c > at) c--;
+            }
+            if (c > 25) return "#REF";
+            col = Cols[c];
+        }
+        return $"{m.Groups[1].Value}{col}{m.Groups[3].Value}{row}";
+    });
+
     public static List<(string kind, string? text, double num)> Tokenize(string s)
     {
         s = s.TrimEnd();
@@ -80,14 +103,19 @@ public static class FormulaEngine
             if (m.Groups[1].Success) outList.Add(("n", null, double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)));
             else if (m.Groups[2].Success) outList.Add(("r", m.Groups[2].Value.ToUpperInvariant().Replace("$", ""), 0));
             else if (m.Groups[3].Success) outList.Add(("f", m.Groups[3].Value.TrimStart('@').ToUpperInvariant(), 0));
-            else outList.Add(("o", m.Groups[4].Value, 0));
+            else if (m.Groups[4].Success)
+            {
+                // String literal: strip the surrounding quotes.
+                outList.Add(("s", m.Groups[4].Value[1..^1], 0));
+            }
+            else outList.Add(("o", m.Groups[5].Value, 0));
         }
         return outList;
     }
 
-    /// <summary>Parse and evaluate a formula. `num` resolves a cell reference to its numeric value,
-    /// `rangeVals` evaluates a rectangular range to its list of numbers.</summary>
-    public static double Parse(ISheet sheet, List<(string kind, string? text, double num)> toks) =>
+    /// <summary>Parse and evaluate a formula. Returns a number (double) or text (string).
+    /// `num`/`rangeVals`/`text`/`value` resolve cell references.</summary>
+    public static object? Parse(ISheet sheet, List<(string kind, string? text, double num)> toks) =>
         new Parser(sheet, toks).Parse();
 
     private sealed class Parser : ISheet
@@ -95,6 +123,52 @@ public static class FormulaEngine
         private readonly ISheet _sheet;
         private readonly List<(string kind, string? text, double num)> _t;
         private int _i;
+
+        // ---- Mixed-type argument helpers (numbers as double, strings as string) ----
+
+        private static double NumAt(string name, List<object?> args, int i)
+        {
+            if (i >= args.Count) throw new SSError($"@{name} needs more value(s)");
+            return args[i] switch { double d => d, _ => throw new SSError($"@{name}: not a number") };
+        }
+
+        private static string StrAt(string name, List<object?> args, int i)
+        {
+            if (i >= args.Count) throw new SSError($"@{name} needs more value(s)");
+            return args[i] switch
+            {
+                string s => s,
+                double d => FmtNum(d, 20),
+                _ => ""
+            };
+        }
+
+        private static RangeArg RangeAt(string name, List<object?> args, int i)
+        {
+            if (i >= args.Count || args[i] is not RangeArg r) throw new SSError($"@{name} needs a range");
+            return r;
+        }
+
+        /// <summary>Flatten function arguments to numbers: doubles pass through, ranges expand via
+        /// the sheet, strings are parsed (blank -> skipped). Used by @SUM/@AVG/@MIN/@MAX/@COUNT.</summary>
+        private static List<double> FlattenNums(ISheet sheet, List<object?> args)
+        {
+            var n = new List<double>();
+            foreach (var a in args)
+            {
+                switch (a)
+                {
+                    case double d: n.Add(d); break;
+                    case RangeArg r: n.AddRange(sheet.RangeVals(r.A, r.B)); break;
+                    case string s when !string.IsNullOrWhiteSpace(s):
+                        if (double.TryParse(s.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double sv)) n.Add(sv);
+                        break;
+                }
+            }
+            return n;
+        }
+
+        private static double NumSum(ISheet sheet, List<object?> args) => FlattenNums(sheet, args).Sum();
 
         public Parser(ISheet sheet, List<(string, string?, double)> toks)
         {
@@ -105,6 +179,9 @@ public static class FormulaEngine
         // ISheet: delegate cell lookups to the real sheet.
         public double Num(string refStr) => _sheet.Num(refStr);
         public List<double> RangeVals(string a, string b) => _sheet.RangeVals(a, b);
+        public string CellText(string refStr) => _sheet.CellText(refStr);
+        public List<List<string>> RangeCells(string a, string b) => _sheet.RangeCells(a, b);
+        public object? Value(string refStr) => _sheet.Value(refStr);
 
         private (string kind, string? text, double num) Peek() =>
             _i < _t.Count ? _t[_i] : ("", null, 0);
@@ -121,95 +198,114 @@ public static class FormulaEngine
             if (Take().text != op) throw new SSError($"expected \"{op}\"");
         }
 
-        public double Parse()
+        // ---- Mixed-type helpers: a formula value is a number (double), text (string), or null/blank. ----
+
+        /// <summary>Numeric view of an operand for arithmetic/comparison (null -> 0, text parsed).</summary>
+        private static double NumOf(object? v) => v switch
+        {
+            double d => d,
+            string s => ToNum(s),
+            _ => 0
+        };
+
+        /// <summary>Text view of an operand for concatenation (numbers formatted, null -> "").</summary>
+        private static string TextOf(object? v) => v switch
+        {
+            string s => s,
+            double d => FmtNum(d, 20),
+            _ => ""
+        };
+
+        public object? Parse()
         {
             if (_t.Count == 0) throw new SSError("empty formula");
-            double v = Cmp();
+            var v = Cmp();
             if (_i != _t.Count) throw new SSError("syntax error");
             return v;
         }
 
-        private double Cmp()
+        private object? Cmp()
         {
-            double a = Add();
+            var a = Add();
             var (k, v, _) = Peek();
             if (k == "o" && v is "<" or ">" or "=" or "<=" or ">=" or "<>")
             {
                 Take();
-                double b = Add();
+                var b = Add();
+                // Numbers compare numerically; text compares lexicographically; mixed -> numeric view.
+                bool bothText = a is string && b is string;
+                int c = bothText ? string.CompareOrdinal(TextOf(a), TextOf(b)) : NumOf(a).CompareTo(NumOf(b));
                 return v switch
                 {
-                    "<" => a < b ? 1 : 0,
-                    ">" => a > b ? 1 : 0,
-                    "=" => a == b ? 1 : 0,
-                    "<=" => a <= b ? 1 : 0,
-                    ">=" => a >= b ? 1 : 0,
-                    _ => a != b ? 1 : 0,
+                    "<" => c < 0 ? 1.0 : 0.0,
+                    ">" => c > 0 ? 1.0 : 0.0,
+                    "=" => c == 0 ? 1.0 : 0.0,
+                    "<=" => c <= 0 ? 1.0 : 0.0,
+                    ">=" => c >= 0 ? 1.0 : 0.0,
+                    _ => c != 0 ? 1.0 : 0.0,   // <>
                 };
             }
             return a;
         }
 
-        private double Add()
+        private object? Add()
         {
-            double a = Mul();
+            var a = Mul();
             while (true)
             {
                 var (k, v, _) = Peek();
                 if (k == "o" && (v == "+" || v == "-"))
                 {
                     Take();
-                    double b = Mul();
-                    a = v == "+" ? a + b : a - b;
+                    var b = Mul();
+                    // '+' concatenates when either side is text; '-' is numeric only.
+                    a = v == "+" ? (a is string || b is string ? TextOf(a) + TextOf(b) : NumOf(a) + NumOf(b))
+                                 : NumOf(a) - NumOf(b);
                 }
                 else return a;
             }
         }
 
-        private double Mul()
+        private object? Mul()
         {
-            double a = Unary();
+            var a = Unary();
             while (true)
             {
                 var (k, v, _) = Peek();
                 if (k == "o" && (v == "*" || v == "/"))
                 {
                     Take();
-                    double b = Unary();
-                    if (v == "*") a *= b;
-                    else
-                    {
-                        if (b == 0) throw new SSError("division by zero");
-                        a /= b;
-                    }
+                    var b = Unary();
+                    double x = NumOf(a), y = NumOf(b);
+                    a = v == "*" ? x * y : (y == 0 ? throw new SSError("division by zero") : x / y);
                 }
                 else return a;
             }
         }
 
-        private double Unary()
+        private object? Unary()
         {
             var (k, v, _) = Peek();
             if (k == "o" && (v == "-" || v == "+"))
             {
                 Take();
-                double x = Unary();
-                return v == "-" ? -x : x;
+                var x = Unary();
+                return v == "-" ? -NumOf(x) : x;
             }
             return Power();
         }
 
-        private double Power()
+        private object? Power()
         {
-            double a = Primary();
+            var a = Primary();
             var (k, v, _) = Peek();
             if (k == "o" && v == "^")
             {
                 Take();
-                double b = Unary();
+                var b = Unary();
                 try
                 {
-                    double r = Math.Pow(a, b);
+                    double r = Math.Pow(NumOf(a), NumOf(b));
                     if (double.IsNaN(r) || double.IsInfinity(r)) throw new SSError("math error");
                     return r;
                 }
@@ -218,17 +314,23 @@ public static class FormulaEngine
             return a;
         }
 
-        private double Primary()
+        private object? Primary() => Primary(false);
+
+        /// <summary>Parse a primary. When `asValue` is true (function-argument context) a cell ref
+        /// resolves to its mixed value (number or text) so string functions can read labels;
+        /// otherwise it resolves numerically for arithmetic.</summary>
+        private object? Primary(bool asValue)
         {
             var (k, v, num) = Take();
             if (k == "n") return num;
-            if (k == "r") return _sheet.Num(v!);
+            if (k == "r") return asValue ? _sheet.Value(v!) : _sheet.Num(v!);
             if (k == "o" && v == "(")
             {
-                double x = Cmp();
+                var x = Cmp();
                 Expect(")");
                 return x;
             }
+            if (k == "s") return v;   // bare string literal: its text value
             if (k == "f")
             {
                 if (v == "PI")
@@ -238,7 +340,7 @@ public static class FormulaEngine
                     return Math.PI;
                 }
                 Expect("(");
-                var args = new List<double>();
+                var args = new List<object?>();
                 if (!(Peek().kind == "o" && Peek().text == ")"))
                 {
                     while (true)
@@ -250,12 +352,14 @@ public static class FormulaEngine
                     }
                 }
                 Expect(")");
-                return CallFunc(v!, args);
+                return CallFunc(this, v!, args);
             }
             throw new SSError("syntax error");
         }
 
-        private List<double> Arg()
+        /// <summary>One function argument: a number, a string literal, or a range (kept as RangeArg
+        /// so 2-D functions like @Vlookup can use it; numeric consumers flatten via NumAt).</summary>
+        private List<object?> Arg()
         {
             var (k, v, _) = Peek();
             if (k == "r" && _i + 1 < _t.Count)
@@ -267,54 +371,86 @@ public static class FormulaEngine
                     Take(); // range operator
                     var end = Take();
                     if (end.kind != "r") throw new SSError("bad range");
-                    return _sheet.RangeVals(v!, end.text!);
+                    return new List<object?> { new RangeArg { A = v!, B = end.text! } };
                 }
             }
-            return new List<double> { Cmp() };
+            if (k == "s") { Take(); return new List<object?> { v }; }
+            // A bare cell ref in a function argument resolves to its mixed value (number or text),
+            // so @Left(A1,2) can read a label; arithmetic contexts use Primary() which is numeric.
+            if (k == "r") { Take(); return new List<object?> { _sheet.Value(v!) }; }
+            return new List<object?> { Cmp() };
         }
 
-        private static double CallFunc(string name, List<double> args)
+        private object? CallFunc(Parser p, string name, List<object?> args)
         {
             try
             {
                 switch (name)
                 {
-                    case "SUM": return args.Sum();
+                    case "SUM": return NumSum(p._sheet, args);
                     case "AVG":
                     case "AVERAGE":
                         if (args.Count == 0) throw new SSError("@AVG of nothing");
-                        return args.Average();
+                        { var n = FlattenNums(p._sheet, args); if (n.Count == 0) throw new SSError("@AVG of nothing"); return n.Average(); }
                     case "MIN":
                         if (args.Count == 0) throw new SSError("@MIN of nothing");
-                        return args.Min();
+                        { var n = FlattenNums(p._sheet, args); if (n.Count == 0) throw new SSError("@MIN of nothing"); return n.Min(); }
                     case "MAX":
                         if (args.Count == 0) throw new SSError("@MAX of nothing");
-                        return args.Max();
-                    case "COUNT": return args.Count;
-                    case "ABS": return Math.Abs(One(name, args));
-                    case "INT": { double x = One(name, args); return x >= 0 ? Math.Floor(x) : Math.Ceiling(x); }
-                    case "SQRT": return Math.Sqrt(One(name, args));
-                    case "EXP": return Math.Exp(One(name, args));
-                    case "LN": return Math.Log(One(name, args));
-                    case "LOG": return Math.Log10(One(name, args));
-                    case "SIN": return Math.Sin(One(name, args));
-                    case "COS": return Math.Cos(One(name, args));
-                    case "TAN": return Math.Tan(One(name, args));
-                    case "ATAN": return Math.Atan(One(name, args));
+                        { var n = FlattenNums(p._sheet, args); if (n.Count == 0) throw new SSError("@MAX of nothing"); return n.Max(); }
+                    case "COUNT": { var n = FlattenNums(p._sheet, args); return n.Count; }
+                    case "ABS": return Math.Abs(NumAt(name, args, 0));
+                    case "INT": { double x = NumAt(name, args, 0); return x >= 0 ? Math.Floor(x) : Math.Ceiling(x); }
+                    case "SQRT": return Math.Sqrt(NumAt(name, args, 0));
+                    case "EXP": return Math.Exp(NumAt(name, args, 0));
+                    case "LN": return Math.Log(NumAt(name, args, 0));
+                    case "LOG": return Math.Log10(NumAt(name, args, 0));
+                    case "SIN": return Math.Sin(NumAt(name, args, 0));
+                    case "COS": return Math.Cos(NumAt(name, args, 0));
+                    case "TAN": return Math.Tan(NumAt(name, args, 0));
+                    case "ATAN": return Math.Atan(NumAt(name, args, 0));
                     case "ROUND":
-                        if (args.Count == 1) args.Add(0);
+                        if (args.Count == 1) args.Add(0.0);
                         if (args.Count != 2) throw new SSError("@ROUND needs 2 value(s)");
-                        {
-                            double x = args[0], f = Math.Pow(10, (int)args[1]);
-                            return Math.Sign(x) * Math.Floor(Math.Abs(x) * f + 0.5) / f;
-                        }
+                        { double x = NumAt(name, args, 0), f = Math.Pow(10, (int)NumAt(name, args, 1)); return Math.Sign(x) * Math.Floor(Math.Abs(x) * f + 0.5) / f; }
                     case "MOD":
                         if (args.Count != 2) throw new SSError("@MOD needs 2 value(s)");
-                        if (args[1] == 0) throw new SSError("division by zero");
-                        return IEEERemainder(args[0], args[1]);
+                        { double d = NumAt(name, args, 1); if (d == 0) throw new SSError("division by zero"); return IEEERemainder(NumAt(name, args, 0), d); }
                     case "IF":
                         if (args.Count != 3) throw new SSError("@IF needs 3 value(s)");
-                        return args[0] != 0 ? args[1] : args[2];
+                        return NumAt(name, args, 0) != 0 ? NumAt(name, args, 1) : NumAt(name, args, 2);
+                    // ---- String functions ----
+                    case "LEFT": { string s = StrAt(name, args, 0); int n = (int)NumAt(name, args, 1); return s[..Math.Max(0, Math.Min(n, s.Length))]; }
+                    case "RIGHT": { string s = StrAt(name, args, 0); int n = (int)NumAt(name, args, 1); if (n <= 0) return ""; return s[^Math.Min(n, s.Length)..]; }
+                    case "MID":
+                        if (args.Count != 3) throw new SSError("@Mid needs 3 value(s)");
+                        { string s = StrAt(name, args, 0); int st = (int)NumAt(name, args, 1), n = (int)NumAt(name, args, 2);
+                          if (st < 1 || n <= 0 || st > s.Length) return ""; return s[(st - 1)..Math.Min(st - 1 + n, s.Length)]; }
+                    case "LEN": return StrAt(name, args, 0).Length;
+                    case "UPPER": return StrAt(name, args, 0).ToUpperInvariant();
+                    case "LOWER": return StrAt(name, args, 0).ToLowerInvariant();
+                    case "JOIN": { var sb = new System.Text.StringBuilder(); foreach (var a in args) sb.Append(a switch { string s => s, double d => FmtNum(d, 20), _ => "" }); return sb.ToString(); }
+                    case "FIND":
+                        if (args.Count < 2) throw new SSError("@Find needs 2 value(s)");
+                        { string hay = StrAt(name, args, 1); string needle = StrAt(name, args, 0);
+                          int idx = hay.IndexOf(needle, StringComparison.Ordinal); if (idx < 0) throw new SSError("not found"); return idx + 1; }
+                    case "TEXT":
+                        if (args.Count == 1) args.Add(2.0);
+                        { double x = NumAt(name, args, 0); int dec = Math.Max(0, (int)NumAt(name, args, 1)); return x.ToString("F" + dec, System.Globalization.CultureInfo.InvariantCulture); }
+                    case "VAL":
+                        if (!double.TryParse(StrAt(name, args, 0), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double nv)) throw new SSError("not a number");
+                        return nv;
+                    // ---- Date/time functions (Excel-style serial dates) ----
+                    case "TODAY": return DateSerial(DateTime.Today);
+                    case "NOW": { var n = DateTime.Now; return DateSerial(n.Date) + (n.Hour * 3600 + n.Minute * 60 + n.Second) / 86400.0; }
+                    case "YEAR": return (int)DateFromSerial(NumAt(name, args, 0)).Year;
+                    case "MONTH": return (int)DateFromSerial(NumAt(name, args, 0)).Month;
+                    case "DAY": return (int)DateFromSerial(NumAt(name, args, 0)).Day;
+                    // ---- Lookup ----
+                    case "VLOOKUP":
+                        if (args.Count < 3) throw new SSError("@Vlookup needs 3 value(s)");
+                        { double key = NumAt(name, args, 0); var rg = RangeAt(name, args, 1); int col = (int)NumAt(name, args, 2);
+                          return Vlookup(p._sheet, key, rg, col); }
                 }
             }
             catch (SSError) { throw; }
@@ -322,14 +458,45 @@ public static class FormulaEngine
             throw new SSError($"unknown function @{name}");
         }
 
-        private static double One(string name, List<double> args)
+        /// <summary>Exact-match vertical lookup: search the first column of the range for `key`,
+        /// return the value `col` columns to the right (1-based).</summary>
+        private static double Vlookup(ISheet sheet, double key, RangeArg rg, int col)
         {
-            if (args.Count != 1) throw new SSError($"@{name} needs 1 value(s)");
-            return args[0];
+            var grid = sheet.RangeCells(rg.A!, rg.B!);
+            string ks = FmtNum(key, 20);
+            foreach (var row in grid)
+            {
+                if (row.Count > 0 && row[0] == ks)
+                {
+                    if (col < 1 || col > row.Count) throw new SSError("@Vlookup: bad column");
+                    return ToNum(row[col - 1]);
+                }
+            }
+            throw new SSError("not found");
         }
 
         // C#'s % is the mathematical remainder; Python's fmod is IEEE 754 remainder.
         private static double IEEERemainder(double x, double y) => Math.IEEERemainder(x, y);
+
+        /// <summary>Parse a string as a number for formula results (empty/blank -> 0).</summary>
+        internal static double ToNum(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return 0;
+            return double.TryParse(s.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double d) ? d : 0;
+        }
+
+        /// <summary>Excel-style date serial: days since 1899-12-30 (includes the historical 1900 leap-year bug).</summary>
+        internal static double DateSerial(DateTime dt)
+        {
+            var o = dt.ToOADate();
+            return o > 60 ? o + 1 : o;   // bridge OLE Automation (1904) to the Excel 1900 system
+        }
+
+        internal static DateTime DateFromSerial(double serial)
+        {
+            double o = serial > 60 ? serial - 1 : serial;
+            return DateTime.FromOADate(o);
+        }
     }
 
     /// <summary>Format a number for display in a cell of width w (last column is a margin).</summary>
@@ -361,10 +528,19 @@ public static class FormulaEngine
         return new string('#', Math.Max(1, w - 1));
     }
 
+    /// <summary>A range argument (A1:B2) passed to functions that need 2-D access, e.g. @Vlookup.</summary>
+    public sealed class RangeArg { public required string A; public required string B; }
+
     /// <summary>The interface the parser uses to look up cells.</summary>
     public interface ISheet
     {
         double Num(string refStr);
         List<double> RangeVals(string a, string b);
+        /// <summary>Display text of a cell (numbers formatted, labels verbatim). For string functions.</summary>
+        string CellText(string refStr);
+        /// <summary>Raw 2-D grid of display text for a rectangular range. For @Vlookup.</summary>
+        List<List<string>> RangeCells(string a, string b);
+        /// <summary>A cell's evaluated value: a number (double) or its text (string). Blank -> null.</summary>
+        object? Value(string refStr);
     }
 }

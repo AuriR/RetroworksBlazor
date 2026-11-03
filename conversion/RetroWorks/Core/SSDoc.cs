@@ -15,6 +15,7 @@ public sealed class SSDoc : Doc, FormulaEngine.ISheet
     private readonly Dictionary<string, object?> _cache = [];
     private readonly HashSet<string> _stack = [];
     private string _lastFind = "";
+    private bool _rendering;   // true during Draw() — suppresses duplicate Error Log creation
 
     public SSDoc(App app, string name) : base(app, name) { }
 
@@ -41,9 +42,40 @@ public sealed class SSDoc : Doc, FormulaEngine.ISheet
         return outList;
     }
 
+    public string CellText(string refStr)
+    {
+        FormulaEngine.SplitRef(refStr);
+        var v = Value(refStr);
+        return v switch
+        {
+            null => "",
+            double d => FormulaEngine.FmtNum(d, 20),
+            SSError e => throw e,
+            string s => s,
+            _ => ""
+        };
+    }
+
+    public List<List<string>> RangeCells(string a, string b)
+    {
+        var (c1, r1) = FormulaEngine.SplitRef(a);
+        var (c2, r2) = FormulaEngine.SplitRef(b);
+        int minC = Math.Min(c1, c2), maxC = Math.Max(c1, c2);
+        int minR = Math.Min(r1, r2), maxR = Math.Max(r1, r2);
+        var grid = new List<List<string>>();
+        for (int r = minR; r <= maxR; r++)
+        {
+            var row = new List<string>();
+            for (int c = minC; c <= maxC; c++)
+                row.Add(CellText(FormulaEngine.RefName(c, r)));
+            grid.Add(row);
+        }
+        return grid;
+    }
+
     // ---- Evaluation ----
 
-    private object? Value(string refStr)
+    public object? Value(string refStr)
     {
         if (_cache.TryGetValue(refStr, out var cached))
         {
@@ -66,8 +98,8 @@ public sealed class SSDoc : Doc, FormulaEngine.ISheet
         try
         {
             string expr = raw![0] == '=' ? raw[1..] : raw!;
-            double v = FormulaEngine.Parse(this, FormulaEngine.Tokenize(expr));
-            if (double.IsNaN(v) || double.IsInfinity(v)) throw new SSError(Localizer.S("NumberOutOfRange"));
+            var v = FormulaEngine.Parse(this, FormulaEngine.Tokenize(expr));
+            if (v is double d && (double.IsNaN(d) || double.IsInfinity(d))) throw new SSError(Localizer.S("NumberOutOfRange"));
             _cache[refStr] = v;
             return v;
         }
@@ -78,8 +110,29 @@ public sealed class SSDoc : Doc, FormulaEngine.ISheet
             _cache[refStr] = e;
             throw e;
         }
+        catch (Exception ex)
+        {
+            // UNEXPECTED exception (a bug, not a normal formula error). Do NOT let it escape and
+            // freeze the app: log it to an "Error Log" document on the Desktop (once), then treat
+            // this cell as 0 so the spreadsheet keeps working. During Draw() we skip logging to
+            // avoid creating a new doc on every render frame.
+            if (!_rendering)
+                App.LogUnexpectedError(ex, Localizer.T("ErrorLogCell", refStr, raw));
+            _cache[refStr] = 0.0;
+            return 0.0;
+        }
         finally { _stack.Remove(refStr); }
     }
+
+    /// <summary>Display text for a formula value (for the status bar).</summary>
+    private static string TextOfVal(object? v) => v switch
+    {
+        null => "",
+        double d => FormulaEngine.FmtNum(d, 19),
+        SSError e => "ERROR",
+        string s => s,
+        _ => ""
+    };
 
     private (string text, string kind) Display(string refStr, int w)
     {
@@ -132,6 +185,16 @@ public sealed class SSDoc : Doc, FormulaEngine.ISheet
     {
         int H = App.MinH, W = App.MinW;
         _cache.Clear();
+        _rendering = true;
+        try
+        {
+            DrawBody(H, W);
+        }
+        finally { _rendering = false; }
+    }
+
+    private void DrawBody(int H, int W)
+    {
         int vh = Vh();
 
         if (_r < _top) _top = _r;
@@ -155,7 +218,8 @@ public sealed class SSDoc : Doc, FormulaEngine.ISheet
         {
             try
             {
-                string vs = "= " + FormulaEngine.FmtNum((double)Value(refStr)!, 19);
+                var val = Value(refStr);
+                string vs = "= " + (val is double dv ? FormulaEngine.FmtNum(dv, 19) : TextOfVal(val));
                 App.Put(H - 2, Math.Max(W - vs.Length - 1, W - 40), vs[..Math.Min(39, vs.Length)]);
             }
             catch (SSError e)
@@ -266,6 +330,36 @@ public sealed class SSDoc : Doc, FormulaEngine.ISheet
         _cache.Clear();
     }
 
+    /// <summary>Shift cells left/right when inserting (+1) or deleting (-1) column `at` (0-based).</summary>
+    private void ShiftCols(int at, int delta)
+    {
+        var newCells = new Dictionary<string, string>();
+        foreach (var (refStr, raw) in Cells)
+        {
+            var (c, r) = FormulaEngine.SplitRef(refStr);
+            if (delta < 0 && c == at) continue;   // delete: drop the column's cells
+            if (delta > 0 && c >= at) c++;
+            else if (delta < 0 && c > at) c--;
+            if (c > 25) continue;
+            newCells[FormulaEngine.RefName(c, r)] =
+                FormulaEngine.IsValue(raw) ? FormulaEngine.FixCols(raw, at, delta) : raw;
+        }
+        // Column widths shift with the columns.
+        var newWidths = new Dictionary<string, int>();
+        foreach (var (colName, w) in Widths)
+        {
+            int c = colName[0] - 'A';
+            if (delta < 0 && c == at) continue;
+            if (delta > 0 && c >= at) c++;
+            else if (delta < 0 && c > at) c--;
+            if (c <= 25) newWidths[FormulaEngine.Cols[c].ToString()] = w;
+        }
+        Widths = newWidths;
+        Cells = newCells;
+        Dirty = true;
+        _cache.Clear();
+    }
+
     // ---- Handle ----
 
     protected override Task HandleAsync(string k) => HandleImpl(k);
@@ -351,6 +445,19 @@ public sealed class SSDoc : Doc, FormulaEngine.ISheet
                 {
                     ShiftRows(_r, -1);
                     App.Msg = Localizer.S("RowDeleted");
+                }
+                break;
+
+            case "A-I":
+                ShiftCols(_c, +1);
+                App.Msg = Localizer.T("ColNInserted", FormulaEngine.Cols[_c].ToString());
+                break;
+
+            case "A-J":
+                if (await App.YesNoAsync(Localizer.T("DeleteColN", FormulaEngine.Cols[_c].ToString())) == true)
+                {
+                    ShiftCols(_c, -1);
+                    App.Msg = Localizer.S("ColDeleted");
                 }
                 break;
 
