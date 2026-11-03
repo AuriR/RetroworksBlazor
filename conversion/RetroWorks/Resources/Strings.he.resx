@@ -49,6 +49,10 @@
   <data name="AltTakesPlaceOfApple" xml:space="preserve"><value>מקש Alt מחליף את מקש ה-Open-Apple.</value></data>
   <data name="PressReturnToContinue" xml:space="preserve"><value>לחץ Return להמשך</value></data>
   <data name="AboutRetroWorks" xml:space="preserve"><value>אודות RetroWorks</value></data>
+  <data name="StartRetroWorks" xml:space="preserve"><value>1. התחל את RetroWorks</value></data>
+  <data name="WhatsNew" xml:space="preserve"><value>2. מה חדש</value></data>
+  <data name="WhatsNewTitle" xml:space="preserve"><value>RetroWorks - מה חדש</value></data>
+  <data name="Press1OrEnterToStart" xml:space="preserve"><value>לחץ 1 או Return להתחלה, 2 למה חדש</value></data>
 
   <!-- Main Menu -->
   <data name="MainMenu" xml:space="preserve"><value>תפריט ראשי</value></data>
@@ -160,8 +164,12 @@
   <data name="RefError" xml:space="preserve"><value>{0}: שגיאה - {1}</value></data>
   <data name="CircularReference" xml:space="preserve"><value>הפניה מעגלית</value></data>
   <data name="NumberOutOfRange" xml:space="preserve"><value>מספר מחוץ לטווח</value></data>
-  <data name="FormulaChainTooDeep" xml:space="preserve"><value>שרשרת נוסחאות ארוכה מדי</value></data>
-  <data name="DivisionByZero" xml:space="preserve"><value>חלוקה באפס</value></data>
+  <data name="FormulaChainTooDeep" xml:space="preserve"><value>שרשרת נוסחאות ארוכה מדי</value></data>  <data name="InternalError" xml:space="preserve"><value>אירעה שגיאה פנימית. נוצר קובץ יומן שגיאות על שולחן העבודה — אנא דווחו על תקלה זו.</value></data>
+  <data name="ErrorLogTitle" xml:space="preserve"><value>יומן שגיאות פנימיות של RETROWORKS</value></data>
+  <data name="ErrorLogWhen" xml:space="preserve"><value>זמן: {0}</value></data>
+  <data name="ErrorLogType" xml:space="preserve"><value>סוג: {0}</value></data>
+  <data name="ErrorLogContext" xml:space="preserve"><value>מיקום: {0}</value></data>
+  <data name="ErrorLogCell" xml:space="preserve"><value>תא {0} = "{1}"</value></data>  <data name="DivisionByZero" xml:space="preserve"><value>חלוקה באפס</value></data>
   <data name="SyntaxError" xml:space="preserve"><value>שגיאת תחביר</value></data>
   <data name="MathError" xml:space="preserve"><value>שגיאה חשבונית</value></data>
   <data name="BadCellReference" xml:space="preserve"><value>הפניה לא תקינה לתא</value></data>
@@ -174,6 +182,9 @@
   <data name="RowNInserted" xml:space="preserve"><value>שורה {0} נוספה.</value></data>
   <data name="DeleteRowN" xml:space="preserve"><value>למחוק את שורה {0}?</value></data>
   <data name="RowDeleted" xml:space="preserve"><value>השורה נמחקה.</value></data>
+  <data name="ColNInserted" xml:space="preserve"><value>עמודה {0} נוספה.</value></data>
+  <data name="DeleteColN" xml:space="preserve"><value>למחוק את עמודה {0}?</value></data>
+  <data name="ColDeleted" xml:space="preserve"><value>העמודה נמחקה.</value></data>
   <data name="WidthOfColumn" xml:space="preserve"><value>רוחב עמודה {0} (3-60): </value></data>
   <data name="NothingToReplicate" xml:space="preserve"><value>אין מה לשכפל: התא הנוכחי ריק.</value></data>
   <data name="ReplicateRefThroughCell" xml:space="preserve"><value>לשכפל את {0} עד התא (למשל {1}): </value></data>
@@ -290,12 +301,18 @@ Delete        ריקון התא
 תווית שמתחילה ב-\ חוזרת לרוחב כל התא:  \-   \=
 @SUM @AVG @MIN @MAX @COUNT @ABS @INT @ROUND(x,n) @SQRT
 @MOD(x,y) @IF(cond,a,b) @EXP @LN @LOG @SIN @COS @TAN @ATAN @PI
+טקסט:  @Left(s,n) @Right(s,n) @Mid(s,p,n) @Len(s) @Upper(s) @Lower(s)
+        @Join(a,b,…) @Find(needle,hay) @Text(x,dec) @Val(s)   "טקסט"
+תאריכים:  @Today @Now @Year(d) @Month(d) @Day(d)   (תאריכי סדרה)
+חיפוש:    @Vlookup(key,range,col)   למשל @Vlookup(A1,B2:C9,2)
 $A$1 הפניה מוחלטת;  A1 הפניה יחסית.
 
 Alt-C/X/V     העתקה / גזירה / הדבקה של תא
 Alt-R         שכפול התא עד תא יעד
 Alt-N         הוספת שורה
 Alt-D         מחיקת שורה
+Alt-I         הוספת עמודה
+Alt-J         מחיקת עמודה
 Alt-W         רוחב עמודה
 Alt-P         ייצוא הערכים ל-CSV (הורדה)
 Alt-S         שמירה לדיסק

@@ -49,6 +49,10 @@
   <data name="AltTakesPlaceOfApple" xml:space="preserve"><value>Alt takes the place of the Open-Apple key.</value></data>
   <data name="PressReturnToContinue" xml:space="preserve"><value>Press Return to continue</value></data>
   <data name="AboutRetroWorks" xml:space="preserve"><value>About RetroWorks</value></data>
+  <data name="StartRetroWorks" xml:space="preserve"><value>1. Start RetroWorks</value></data>
+  <data name="WhatsNew" xml:space="preserve"><value>2. What's New</value></data>
+  <data name="WhatsNewTitle" xml:space="preserve"><value>RetroWorks - What's New</value></data>
+  <data name="Press1OrEnterToStart" xml:space="preserve"><value>Press 1 or Return to start, 2 for What's New</value></data>
 
   <!-- Main Menu -->
   <data name="MainMenu" xml:space="preserve"><value>Main Menu</value></data>
@@ -161,6 +165,12 @@
   <data name="CircularReference" xml:space="preserve"><value>circular reference</value></data>
   <data name="NumberOutOfRange" xml:space="preserve"><value>number out of range</value></data>
   <data name="FormulaChainTooDeep" xml:space="preserve"><value>formula chain too deep</value></data>
+  <data name="InternalError" xml:space="preserve"><value>An internal error occurred. An Error Log file was created on the Desktop — please report this bug.</value></data>
+  <data name="ErrorLogTitle" xml:space="preserve"><value>RETROWORKS INTERNAL ERROR LOG</value></data>
+  <data name="ErrorLogWhen" xml:space="preserve"><value>Time: {0}</value></data>
+  <data name="ErrorLogType" xml:space="preserve"><value>Type: {0}</value></data>
+  <data name="ErrorLogContext" xml:space="preserve"><value>Where: {0}</value></data>
+  <data name="ErrorLogCell" xml:space="preserve"><value>cell {0} = "{1}"</value></data>
   <data name="DivisionByZero" xml:space="preserve"><value>division by zero</value></data>
   <data name="SyntaxError" xml:space="preserve"><value>syntax error</value></data>
   <data name="MathError" xml:space="preserve"><value>math error</value></data>
@@ -174,6 +184,9 @@
   <data name="RowNInserted" xml:space="preserve"><value>Row {0} inserted.</value></data>
   <data name="DeleteRowN" xml:space="preserve"><value>Delete row {0}?</value></data>
   <data name="RowDeleted" xml:space="preserve"><value>Row deleted.</value></data>
+  <data name="ColNInserted" xml:space="preserve"><value>Column {0} inserted.</value></data>
+  <data name="DeleteColN" xml:space="preserve"><value>Delete column {0}?</value></data>
+  <data name="ColDeleted" xml:space="preserve"><value>Column deleted.</value></data>
   <data name="WidthOfColumn" xml:space="preserve"><value>Width of column {0} (3-60): </value></data>
   <data name="NothingToReplicate" xml:space="preserve"><value>Nothing to replicate: the current cell is blank.</value></data>
   <data name="ReplicateRefThroughCell" xml:space="preserve"><value>Replicate {0} through cell (e.g. {1}): </value></data>
@@ -282,12 +295,18 @@ A label that starts with \ repeats across the cell:  \-   \=
 
 Functions: @SUM @AVG @MIN @MAX @COUNT @ABS @INT @ROUND(x,n) @SQRT
            @MOD(x,y) @IF(cond,a,b) @EXP @LN @LOG @SIN @COS @TAN @ATAN @PI
+Strings:   @Left(s,n) @Right(s,n) @Mid(s,p,n) @Len(s) @Upper(s) @Lower(s)
+           @Join(a,b,…) @Find(needle,hay) @Text(x,dec) @Val(s)  "text" literal
+Dates:     @Today @Now @Year(d) @Month(d) @Day(d)   (serial dates)
+Lookup:    @Vlookup(key,range,col)   e.g. @Vlookup(A1,B2:C9,2)
 Operators: + - * / ^ and comparisons &lt; &gt; = &lt;= &gt;= &lt;&gt; (true = 1)
+           + joins text when a side is text ("a"+"b" = "ab")
 $A$1 is an absolute reference; A1 is relative.
 
 Alt-C / Alt-X / Alt-V .. copy / cut / paste a cell (formulas adjust)
 Alt-R ............ replicate the cell down/across to a target cell
 Alt-N ............ insert a row      Alt-D ........... delete the row
+Alt-I ............ insert a column   Alt-J ........... delete the column
 Alt-W ............ column width      Alt-P ........... export values to CSV
 Alt-S ............ save to disk      Alt-Shift-S ..... download file
 Alt-Q ............ quick change      Escape .......... Main Menu / Alt-K help</value></data>
