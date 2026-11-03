@@ -799,6 +799,48 @@ public sealed class App
         return rows;
     }
 
+    /// <summary>
+    /// Safety net for UNEXPECTED exceptions (bugs) — as opposed to normal SSError formula errors.
+    /// Creates a Word Processor "Error Log" document on the Desktop with full details so the user
+    /// can view and share it, shows a message, and keeps the app running. The caller should return 0.
+    /// </summary>
+    private bool _loggingError;
+
+    public void LogUnexpectedError(Exception ex, string? context = null)
+    {
+        if (_loggingError) return;   // never log while logging (recursion guard)
+        _loggingError = true;
+        try
+        {
+            Msg = Localizer.S("InternalError");
+            var name = "Error Log " + DateTime.Now.ToString("yyyy-MM-dd HHmmss");
+            if (Desktop.Any(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                name += "-2";
+
+            var paras = new List<string>
+            {
+                Localizer.S("ErrorLogTitle"),
+                "",
+                Localizer.T("ErrorLogWhen", DateTime.Now.ToString(Localizer.Lang == "en" ? "dddd, dd MMMM yyyy HH:mm:ss" : "dd/MM/yyyy HH:mm:ss")),
+                Localizer.T("ErrorLogType", ex.GetType().FullName ?? ex.GetType().Name),
+            };
+            if (context is not null && context.Length > 0)
+                paras.Add(Localizer.T("ErrorLogContext", context));
+            paras.AddRange(new[] { "", "Message:", ex.Message, "", "Stack trace:" });
+            foreach (var line in (ex.StackTrace ?? "").Split('\n'))
+                if (line.Trim().Length > 0) paras.Add(line.TrimEnd());
+
+            var d = new WPDoc(this, name);
+            d.Paras = paras;
+            d.DetectDirs();
+            d.Sty = Enumerable.Repeat("", d.Paras.Count).ToList();
+            d.Dirty = true;
+            Desktop.Add(d);
+        }
+        catch { /* the log itself failed — the Msg above is all we can do */ }
+        finally { _loggingError = false; }
+    }
+
     private async Task<List<string>?> AskCategoriesAsync(string name)
     {
         var fields = new List<string>();
@@ -1030,21 +1072,43 @@ public sealed class App
             string date = DateTime.Today.ToString(Localizer.Lang == "en" ? "dddd, dd MMMM yyyy" : "dd/MM/yyyy");
             var lines = new[]
             {
-                Localizer.T("Version", "1.4"),
+                Localizer.T("Version", "1.5"),
                 Localizer.S("OriginalTribute"),
                 Localizer.S("NotAffiliated"),
                 "",
                 Localizer.T("TodaysDate", date),
                 "",
                 Localizer.S("AltTakesPlaceOfApple"),
-                Localizer.S("PressReturnToContinue"),
+                "",
+                Localizer.S("StartRetroWorks"),
+                Localizer.S("WhatsNew"),
             };
             for (int j = 0; j < lines.Length; j++)
                 Put(y + 8 + j, (W - lines[j].Length) / 2, lines[j],
-                    j == lines.Length - 1 ? A_B : A_N);
+                    j >= lines.Length - 2 ? A_B : A_N);
 
             string k = await KeyAsync();
-            if (k != "") return;
+            if (k == "1" || k == "") return;
+            if (k == "2")
+            {
+                // Show What's New screen
+                string whatsnew = @"Version 1.5 - Current Release
+
+- Expanded spell check dictionary (5,000+ words)
+- Added spreadsheet functions: @Left, @Right, @Mid, @Len,
+  @Upper, @Lower, @Join, @Find, @Text, @Val, @Today, @Now,
+  @Year, @Month, @Day, @Vlookup
+- Column insert/delete in spreadsheets
+- Splash screen now shows What's New option
+
+Version 1.3 - Previous Release
+- Initial C# port from Python reference implementation
+- Word processor with spell check and thesaurus
+- Database with sort, find, and report features
+- Spreadsheet with formula engine";
+                string[] whatsnewLines = whatsnew.Split('\n');
+                await ShowTextAsync(Localizer.S("WhatsNewTitle"), whatsnewLines);
+            }
         }
     }
 
