@@ -155,6 +155,19 @@
   <data name="ReplacedNOccurrences" xml:space="preserve"><value>הוחלפו {0} מופעים.</value></data>
   <data name="PrintToTextFile" xml:space="preserve"><value>הדפסה לקובץ טקסט (הורדה): </value></data>
   <data name="PrintedNLinesToFile" xml:space="preserve"><value>{0} שורות הודפסו ל-{1}</value></data>
+  <data name="PrintToPdfFile" xml:space="preserve"><value>הדפסה לקובץ PDF (הורדה): </value></data>
+  <data name="PdfSavedTo" xml:space="preserve"><value>קובץ PDF נשמר ב-{0}</value></data>
+  <data name="PgN" xml:space="preserve"><value>עמ {0}</value></data>
+  <data name="IndentN" xml:space="preserve"><value>הזזה {0}</value></data>
+  <data name="RIndN" xml:space="preserve"><value>הימ' {0}</value></data>
+  <data name="Hanging" xml:space="preserve"><value>הזזה תלויה</value></data>
+  <data name="LeftIndentN" xml:space="preserve"><value>הזזה שמאלית {0}.</value></data>
+  <data name="RightIndentN" xml:space="preserve"><value>הזזה ימנית {0}.</value></data>
+  <data name="HangingOn" xml:space="preserve"><value>הזזה תלויה דלוקה.</value></data>
+  <data name="HangingOff" xml:space="preserve"><value>הזזה תלויה כבוייה.</value></data>
+  <data name="HeaderPrompt" xml:space="preserve"><value>כותרת (ריק לביטול): </value></data>
+  <data name="FooterPrompt" xml:space="preserve"><value>כותרת תחתונה, Pg = מספר עמוד (ריק לביטול): </value></data>
+  <data name="PrintPageN" xml:space="preserve"><value>- עמוד {0} -</value></data>
 
   <!-- Spreadsheet -->
   <data name="TypeEntryOrAltCommands" xml:space="preserve"><value>הקלד ערך או השתמש בפקודות Alt        Alt-K: עזרה</value></data>
@@ -169,6 +182,7 @@
   <data name="ErrorLogWhen" xml:space="preserve"><value>זמן: {0}</value></data>
   <data name="ErrorLogType" xml:space="preserve"><value>סוג: {0}</value></data>
   <data name="ErrorLogContext" xml:space="preserve"><value>מיקום: {0}</value></data>
+  <data name="ErrorLogInDoc" xml:space="preserve"><value>בעת עבודה ב"{0}"</value></data>
   <data name="ErrorLogCell" xml:space="preserve"><value>תא {0} = "{1}"</value></data>  <data name="DivisionByZero" xml:space="preserve"><value>חלוקה באפס</value></data>
   <data name="SyntaxError" xml:space="preserve"><value>שגיאת תחביר</value></data>
   <data name="MathError" xml:space="preserve"><value>שגיאה חשבונית</value></data>
@@ -229,8 +243,35 @@
   <data name="ExportRecordsToCsv" xml:space="preserve"><value>ייצוא הרשומות לקובץ CSV (הורדה): </value></data>
   <data name="ExportedNRecordsToFile" xml:space="preserve"><value>{0} רשומות יוצאו ל-{1}</value></data>
 
+  <!-- מסד נתונים: רשימות בחירה וכללי הדגשה -->
+  <data name="LookupFor" xml:space="preserve"><value>ערכים מותרים עבור "{0}" (מופרדים בפסיק, ריק לביטול): </value></data>
+  <data name="TypeOtherValue" xml:space="preserve"><value>הקלד ערך אחר...</value></data>
+  <data name="LookupSet" xml:space="preserve"><value>רשימת הבחירה הוגדרה.</value></data>
+  <data name="LookupCleared" xml:space="preserve"><value>רשימת הבחירה נמחקה.</value></data>
+  <data name="HighlightRules" xml:space="preserve"><value>כללי הדגשה</value></data>
+  <data name="NoRulesYet" xml:space="preserve"><value>(אין כללים עדיין)</value></data>
+  <data name="AddRule" xml:space="preserve"><value>הוספת כלל...</value></data>
+  <data name="ClearAllRules" xml:space="preserve"><value>מחיקת כל הכללים</value></data>
+  <data name="WhichField" xml:space="preserve"><value>איזה שדה?</value></data>
+  <data name="RuleCondition" xml:space="preserve"><value>כאשר הערך...</value></data>
+  <data name="IsEmpty" xml:space="preserve"><value>ריק</value></data>
+  <data name="RuleValue" xml:space="preserve"><value>ערך להתאמה: </value></data>
+  <data name="RuleAdded" xml:space="preserve"><value>הכלל נוסף.</value></data>
+  <data name="RulesCleared" xml:space="preserve"><value>כל הכללים נמחקו.</value></data>
+  <data name="RuleDeleted" xml:space="preserve"><value>כלל {0} נמחק.</value></data>
+
+  <!-- מסד נתונים: דוחות -->
+  <data name="ReportMenu" xml:space="preserve"><value>דו"ח</value></data>
+  <data name="TableReport" xml:space="preserve"><value>דו"ח טבלה (עמודות מיושרות)</value></data>
+  <data name="LabelReport" xml:space="preserve"><value>דו"ח תוויות (תוויות דואר)</value></data>
+  <data name="WhichColumns" xml:space="preserve"><value>עמודות לכלול, למשל 1,3,5 (ריק = כולן): </value></data>
+  <data name="LinesPerLabel" xml:space="preserve"><value>שורות לתווית (1-6): </value></data>
+  <data name="ReportToTextFile" xml:space="preserve"><value>דו"ח טבלה לקובץ טקסט (הורדה): </value></data>
+  <data name="LabelReportToFile" xml:space="preserve"><value>דו"ח תוויות לקובץ טקסט (הורדה): </value></data>
+  <data name="ReportSavedTo" xml:space="preserve"><value>הדו"ח נשמר ב-{0}</value></data>
+
   <!-- Help text -->
-  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   גרסה 1.2
+  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   גרסה 1.6
 
 מעבד תמלילים, מסד נתונים וגיליון אלקטרוני משולבים, בסגנון
 תוכנות העבודה של ה-Apple ][ : מסך ירוק ברוחב 80 עמודות.
@@ -249,7 +290,11 @@ Alt-K   עזרה עבור סוג הקובץ שעובדים עליו.
 .rss     גיליון אלקטרוני
 
 מכיוון ש-macOS שומרת את מקש Command לעצמה, כל פקודות
-ה-Open-Apple מוקלדות עם Alt.</value></data>
+ה-Open-Apple מוקלדות עם Alt.
+
+גופן ההדפסה ImgWriter NLQ מורשה מ-John H. Isles תחת רישיון
+Creative Commons Attribution:
+https://fontstruct.com/fontstructions/show/473428</value></data>
 
   <data name="HelpWP" xml:space="preserve"><value>פקודות מעבד התמלילים      (Alt מחליף את מקש ה-Open-Apple)
 
@@ -272,7 +317,14 @@ Alt-W         בדיקת איות: 1/2=בחירה A=קבל R=החלף I=התעל
 Alt-L         כיוון הפסקה: ימין לשמאל / שמאל לימין
 Alt-B         הדגשה (Bold) פועלת / כבויה
 Alt-U         קו תחתון פועל / כבוי
-Alt-P         "הדפסה" לקובץ טקסט (76 עמודות, הורדה)
+
+עיצוב (לפסקה הנוכחית):
+Tab           טאב (עד עמודת 8)     Alt-I ....... הזזה שמאלית (+4, עד 24)
+Alt-O         הזזה ימנית            Alt-H ....... הזזה תלויה דלקה/כבויה
+Alt-Shift-H   הגדרת כותרת            Alt-Shift-F .. כותרת תחתונה (Pg = מספר עמוד)
+
+Alt-P         "הדפסה" לקובץ טקסט (76 עמודות, עמודים + כותרות)
+Alt-Shift-P   "הדפסה" לקובץ PDF (גופן ImgWriter NLQ, US Letter)
 Alt-S         שמירה לדיסק
 Alt-Shift-S   הורדת הקובץ
 Alt-Q         מעבר מהיר לקובץ אחר
@@ -334,6 +386,10 @@ Alt-F         בחירת רשומות שמכילות טקסט
               (Return בשורה ריקה בוחר שוב את כולן)
 Alt-A         מיון לפי הקטגוריה הזו; שוב = סדר הפוך
 Alt-E         שינוי קטגוריות: שם, הוספה, מחיקה, הזזה
+Alt-L         רשימת בחירה לשדה זה (ערכים מופרדים בפסיק)
+              → בעריכת השדה מוצעת הרשימה כתפריט ממוספר
+Alt-R         כללי הדגשה: שורות הפוכות כשערך מכיל/שווה/מתחיל, או ריק
+Alt-G         דו"ח: טבלה מיושרת (בחירת עמודות) או תוויות דואר
 Alt-W         רוחב הקטגוריה בטבלה
 Alt-P         ייצוא הרשומות הנבחרות ל-CSV (הורדה)
 Alt-S         שמירה לדיסק

@@ -56,6 +56,7 @@ public sealed class App
 
     // ---- JS interop (set by the Blazor component) ----
     public Func<string, string, Task>? DownloadFileFunc;
+    public Func<string, List<List<string>>, Task>? PrintPdfFunc;
     public Func<string, Task<string?>>? LoadFileFunc;
 
     // localStorage persistence ("the disk" that survives refresh/restart)
@@ -69,6 +70,13 @@ public sealed class App
     {
         if (DownloadFileFunc is not null)
             await DownloadFileFunc(fileName, content);
+    }
+
+    /// <summary>Render paginated lines to a PDF in the browser and trigger a download.</summary>
+    public async Task PrintPdfAsync(string fileName, List<List<string>> pages)
+    {
+        if (PrintPdfFunc is not null)
+            await PrintPdfFunc(fileName, pages);
     }
 
     /// <summary>Load a file from the browser (file picker). Returns JSON text or null.</summary>
@@ -1044,7 +1052,18 @@ public sealed class App
         while (current is not null)
         {
             Current = current;
-            object? res = await current.RunAsync();
+            object? res;
+            try
+            {
+                res = await current.RunAsync();
+            }
+            catch (Exception ex)
+            {
+                // Safety net: an unexpected bug inside a document must not kill the app.
+                // Log it as an "Error Log" file on the Desktop and return to the menu.
+                LogUnexpectedError(ex, context: Localizer.T("ErrorLogInDoc", current.Name));
+                res = null;
+            }
             current = res as Doc;
         }
     }
@@ -1072,7 +1091,7 @@ public sealed class App
             string date = DateTime.Today.ToString(Localizer.Lang == "en" ? "dddd, dd MMMM yyyy" : "dd/MM/yyyy");
             var lines = new[]
             {
-                Localizer.T("Version", "1.5"),
+                Localizer.T("Version", "1.6"),
                 Localizer.S("OriginalTribute"),
                 Localizer.S("NotAffiliated"),
                 "",
@@ -1092,7 +1111,25 @@ public sealed class App
             if (k == "2")
             {
                 // Show What's New screen
-                string whatsnew = @"Version 1.5 - Current Release
+                string whatsnew = @"Version 1.6 - Current Release
+
+Word Processor:
+- Tab stops (8 columns) and per-paragraph indents
+  Alt-I left, Alt-O right, Alt-H hanging indent
+- Header & footer with page numbers (Alt-Shift-H / F),
+  shown on screen as Pg N and in the printed file
+- PDF print (Alt-Shift-P): prints to a real PDF using the
+  ImageWriter NLQ retro font for an authentic Apple II look
+
+Data Base:
+- Lookup lists per field (Alt-L): editing a field offers
+  the allowed values as a numbered menu
+- Highlight rules (Alt-R): matching records show in reverse
+  video (contains / equals / starts with / is empty)
+- Reports (Alt-G): aligned table report (pick columns) or
+  mailing-label report, saved to .txt
+
+Version 1.5 - Previous Release
 
 - Expanded spell check dictionary (5,000+ words)
 - Added spreadsheet functions: @Left, @Right, @Mid, @Len,
@@ -1101,7 +1138,7 @@ public sealed class App
 - Column insert/delete in spreadsheets
 - Splash screen now shows What's New option
 
-Version 1.3 - Previous Release
+Version 1.3 - Earlier Release
 - Initial C# port from Python reference implementation
 - Word processor with spell check and thesaurus
 - Database with sort, find, and report features

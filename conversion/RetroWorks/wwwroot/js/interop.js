@@ -135,6 +135,93 @@ export function downloadFile(fileName, content) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Trigger a browser download of binary (Uint8Array) content as a file. */
+function downloadBytes(fileName, bytes, mime) {
+    const blob = new Blob([bytes], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Dynamically load a UMD script and resolve when it's ready. Cached after first load.
+ */
+const _scriptCache = {};
+function loadScript(src) {
+    if (_scriptCache[src]) return _scriptCache[src];
+    _scriptCache[src] = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('Failed to load ' + src));
+        document.head.appendChild(s);
+    });
+    return _scriptCache[src];
+}
+
+/**
+ * Render paginated text to a PDF using the bundled ImgWriter NLQ font and trigger
+ * a download. `pages` is an array of pages; each page is an array of display lines
+ * (the C# side already composed header + body + footer per page). Monospace grid:
+ * every character sits on a fixed column so it prints like the AppleWorks screen.
+ */
+export async function printPdf(fileName, pages) {
+    // Load pdf-lib + fontkit on demand (UMD scripts set window.PDFLib / window.fontkit).
+    await Promise.all([loadScript('/lib/pdf/pdf-lib.min.js'), loadScript('/lib/pdf/fontkit.umd.min.js')]);
+    const PDFLib = window.PDFLib;
+    const fontkit = window.fontkit;
+    if (!PDFLib || !fontkit) throw new Error('pdf-lib / fontkit failed to initialize');
+
+    // Load the bundled retro font (TrueType outlines — converted from OTF/CFF because
+    // pdf-lib's fontkit chokes on the incomplete CFF Subrs table in this FontStruct font).
+    const fontRes = await fetch('/fonts/imgwriter-nlq.ttf');
+    if (!fontRes.ok) throw new Error('Could not load the print font (' + fontRes.status + ')');
+    const fontBytes = new Uint8Array(await fontRes.arrayBuffer());
+
+    const doc = await PDFLib.PDFDocument.create();
+    doc.registerFontkit(fontkit);
+    const font = await doc.embedFont(fontBytes);
+
+    // US Letter, black on white. Monospace metrics from the font itself.
+    const pageW = 612, pageH = 792;          // points (8.5 x 11 in)
+    const margin = 40;
+    const fontSize = 10;
+    const charW = font.widthOfTextAtSize('M', fontSize);   // monospace advance width
+    const lineH = fontSize * 1.25;
+    const maxCols = Math.floor((pageW - 2 * margin) / charW);
+
+    for (const lines of pages) {
+        const page = doc.addPage([pageW, pageH]);
+        // The C# side composes each page as [header, ...body..., footer].
+        // Render the header + body top-down from the top margin, then pin the
+        // footer centered at the bottom of the page (AppleWorks print style).
+        const footer = lines.length > 0 ? lines[lines.length - 1] : '';
+        const bodyLines = lines.slice(0, Math.max(0, lines.length - 1));
+
+        let y = pageH - margin;              // top-down: start at the top margin
+        for (let i = 0; i < bodyLines.length && y > margin + lineH * 2; i++) {
+            let text = bodyLines[i] || '';
+            if (text.length > maxCols) text = text.slice(0, maxCols);   // safety clip
+            page.drawText(text, { x: margin, y: y - fontSize, size: fontSize, font: font, color: PDFLib.rgb(0, 0, 0) });
+            y -= lineH;
+        }
+
+        // Footer: centered horizontally, sitting at the bottom margin.
+        if (footer && footer.trim().length > 0) {
+            const fw = font.widthOfTextAtSize(footer, fontSize);
+            page.drawText(footer, { x: (pageW - fw) / 2, y: margin, size: fontSize, font: font, color: PDFLib.rgb(0, 0, 0) });
+        }
+    }
+
+    const pdfBytes = await doc.save();
+    downloadBytes(fileName, pdfBytes, 'application/pdf');
+}
+
 /**
  * Open the browser file picker and return the file's text content, or null.
  * @param {string} accept - File input accept attribute (e.g. ".rwp,.rdb,.rss").

@@ -19,6 +19,15 @@ public sealed class WPDoc : Doc
     private bool _insert = true;
     private string _lastFind = "";
 
+    // Per-paragraph formatting (Step 4): left/right indent in columns + hanging flag.
+    public List<int> IndL { get; set; } = [0];
+    public List<int> IndR { get; set; } = [0];
+    public List<bool> Hang { get; set; } = [false];
+
+    // Document header/footer (printed on every page; "Pg" in the footer = page number).
+    private string _header = "";
+    private string _footer = "";
+
     public WPDoc(App app, string name) : base(app, name) { }
 
     private char DefaultDir() => Localizer.Lang == "he" ? 'R' : 'L';
@@ -36,6 +45,12 @@ public sealed class WPDoc : Doc
         Dirs = Dirs.Take(n).ToList();
         while (Sty.Count < n) Sty.Add("");
         Sty = Sty.Take(n).ToList();
+        while (IndL.Count < n) IndL.Add(0);
+        IndL = IndL.Take(n).ToList();
+        while (IndR.Count < n) IndR.Add(0);
+        IndR = IndR.Take(n).ToList();
+        while (Hang.Count < n) Hang.Add(false);
+        Hang = Hang.Take(n).ToList();
         for (int i = 0; i < n; i++)
         {
             if (Sty[i].Length != Paras[i].Length)
@@ -53,6 +68,14 @@ public sealed class WPDoc : Doc
         };
         if (Sty.Any(st => st.Trim('0').Length > 0))
             data["styles"] = Sty;
+        if (IndL.Any(v => v != 0) || IndR.Any(v => v != 0) || Hang.Any(v => v))
+        {
+            data["indl"] = IndL;
+            data["indr"] = IndR;
+            data["hang"] = Hang;
+        }
+        if (_header.Length > 0) data["header"] = _header;
+        if (_footer.Length > 0) data["footer"] = _footer;
         return data;
     }
 
@@ -60,7 +83,8 @@ public sealed class WPDoc : Doc
 
     public override void FromJson(JsonElement d)
     {
-        Paras = [.. d.GetProperty("paras").EnumerateArray().Select(e => Text.Clean(e.GetString() ?? ""))];
+        // Keep real tabs (WP stores them); other control chars are still stripped.
+        Paras = [.. d.GetProperty("paras").EnumerateArray().Select(e => Text.CleanKeepTabs(e.GetString() ?? ""))];
         if (Paras.Count == 0) Paras = [""];
 
         if (d.TryGetProperty("dirs", out var dirsEl) && dirsEl.ValueKind == JsonValueKind.String)
@@ -84,6 +108,19 @@ public sealed class WPDoc : Doc
         }
         else Sty = Paras.Select(_ => "").ToList();
 
+        IndL = Enumerable.Repeat(0, Paras.Count).ToList();
+        IndR = Enumerable.Repeat(0, Paras.Count).ToList();
+        Hang = Enumerable.Repeat(false, Paras.Count).ToList();
+        if (d.TryGetProperty("indl", out var il) && il.ValueKind == JsonValueKind.Array && il.GetArrayLength() == Paras.Count)
+            IndL = [.. il.EnumerateArray().Select(e => e.GetInt32())];
+        if (d.TryGetProperty("indr", out var ir) && ir.ValueKind == JsonValueKind.Array && ir.GetArrayLength() == Paras.Count)
+            IndR = [.. ir.EnumerateArray().Select(e => e.GetInt32())];
+        if (d.TryGetProperty("hang", out var hg) && hg.ValueKind == JsonValueKind.Array && hg.GetArrayLength() == Paras.Count)
+            Hang = [.. hg.EnumerateArray().Select(e => e.GetBoolean())];
+
+        _header = d.TryGetProperty("header", out var he) ? (he.GetString() ?? "") : "";
+        _footer = d.TryGetProperty("footer", out var fe) ? (fe.GetString() ?? "") : "";
+
         FixDirs();
     }
 
@@ -94,7 +131,11 @@ public sealed class WPDoc : Doc
         var rows = new List<(int, int, int, bool)>();
         for (int pi = 0; pi < Paras.Count; pi++)
         {
-            var starts = Text.WrapStarts(Paras[pi], ww);
+            // Wrap within the space left between the left and right indents so the
+            // paragraph visually ends at the right margin. Clamp to a sane minimum
+            // in case both indents are set very wide.
+            int wrapW = Math.Max(10, ww - IndL[pi] - IndR[pi]);
+            var starts = WrapPara(Paras[pi], wrapW);
             for (int r = 0; r < starts.Length; r++)
             {
                 bool last = r == starts.Length - 1;
@@ -103,6 +144,28 @@ public sealed class WPDoc : Doc
         }
         return rows;
     }
+
+    /// <summary>Word-wrap a paragraph at width w; breaks on spaces or tabs.</summary>
+    private static int[] WrapPara(string s, int w)
+    {
+        var starts = new List<int> { 0 };
+        int i = 0, n = s.Length;
+        while (n - i > w)
+        {
+            int brk = i + w;
+            for (int j = i + w; j > i; j--)
+                if (s[j - 1] is ' ' or '\t') { brk = j; break; }
+            starts.Add(brk);
+            i = brk;
+        }
+        return [.. starts];
+    }
+
+    /// <summary>Column a tab at logical position pos advances to (8-column stops).</summary>
+    private static int TabStop(int pos) => ((pos / 8) + 1) * 8;
+
+    /// <summary>Effective left indent for a display row (hanging adds 4 cols to continuation lines).</summary>
+    private int RowIndent(int pi, int s) => IndL[pi] + (Hang[pi] && s > 0 ? 4 : 0);
 
     private int Crow(List<(int pi, int s, int e, bool last)> rows)
     {
@@ -132,17 +195,23 @@ public sealed class WPDoc : Doc
         if ((_style & 1) != 0) footParts.Add(Localizer.S("Bold"));
         if ((_style & 2) != 0) footParts.Add(Localizer.S("Underline"));
         footParts.Add(Localizer.S(rtl ? "RightToLeft" : "LeftToRight"));
+        footParts.Add(Localizer.T("PgN", PageOf(cr, rows)));
+        if (IndL[_pi] > 0) footParts.Add(Localizer.T("IndentN", IndL[_pi]));
+        if (IndR[_pi] > 0) footParts.Add(Localizer.T("RIndN", IndR[_pi]));
+        if (Hang[_pi]) footParts.Add(Localizer.S("Hanging"));
         footParts.Add(Localizer.T("LineAOfB", cr + 1, rows.Count));
         footParts.Add(Localizer.T("ColumnN", col + 1));
         footParts.Add(Localizer.T("NWords", words));
 
         App.Frame(Title(), "ReviewAddChange", "EscapeMainMenu", "AltKHelp", string.Join("   ", footParts));
 
-        // Ruler
+        // Ruler: ticks every 5 columns; 'v' marks the current paragraph's left indent.
         var ruler = new char[W];
         Array.Fill(ruler, '=');
         for (int k = 0; k <= ww && x0 + k < W; k += 5)
             ruler[x0 + k] = '|';
+        int indMark = RowIndent(_pi, rows[cr].s);
+        if (indMark > 0 && x0 + indMark < W) ruler[x0 + indMark] = 'v';
         App.Put(1, 0, new string(ruler));
 
         // Text rows
@@ -153,42 +222,105 @@ public sealed class WPDoc : Doc
             DrawRow(2 + i, rows[r], ww, x0);
         }
 
-        // Cursor
-        var (seg, vis, _) = RowVisual(rows[cr], ww);
+        // Cursor: display column of the logical position (tabs expand to 8-col stops).
+        var (seg, widths, _) = RowVisual(rows[cr], ww);
         int li = _ci - rows[cr].s;
-        int cx = x0 + Math.Min(li, vis.Length - 1);
+        int cx = x0 + RowIndent(_pi, rows[cr].s) + DisplayCol(seg, widths, Math.Min(li, seg.Length));
         App.SetCursor(2 + cr - _top, Math.Max(0, Math.Min(W - 1, cx)));
     }
 
-    private (string seg, string vis, int[] order) RowVisual((int pi, int s, int e, bool last) row, int ww)
+    /// <summary>Display width of each char in a row segment (a tab spans to the next 8-col stop).</summary>
+    private static int[] CharWidths(string seg)
+    {
+        var w = new int[seg.Length];
+        int col = 0;
+        for (int i = 0; i < seg.Length; i++)
+        {
+            if (seg[i] == '\t') { int stop = TabStop(col); w[i] = Math.Max(1, stop - col); col = stop; }
+            else { w[i] = 1; col++; }
+        }
+        return w;
+    }
+
+    /// <summary>Display column of logical index i within a segment (sum of expanded widths).</summary>
+    private static int DisplayCol(string seg, int[] widths, int i)
+    {
+        int c = 0;
+        for (int j = 0; j < i && j < widths.Length; j++) c += widths[j];
+        return c;
+    }
+
+    /// <summary>Page number of a display row: header+footer take 2 lines, 60 text lines per page.</summary>
+    private static int PageOf(int cr, List<(int pi, int s, int e, bool last)> rows)
+    {
+        int per = Math.Max(1, (App.MinH - 4) - 2);
+        return cr / per + 1;
+    }
+
+    private (string seg, int[] widths, string vis) RowVisual((int pi, int s, int e, bool last) row, int ww)
     {
         string seg = Paras[row.pi][row.s..row.e];
-        string padded = seg + new string(' ', Math.Max(1, ww + 1 - seg.Length));
-        string vis = Bidi.BidiVisual(padded, Dirs[row.pi].ToString());
-        return (seg, vis, Array.Empty<int>());
+        var widths = CharWidths(seg);
+        // Pad to at least one column so an empty line still renders.
+        int total = 0;
+        foreach (int x in widths) total += x;
+        if (total < 1)
+        {
+            seg = " ";
+            widths = [1];
+        }
+        string vis = Bidi.BidiVisual(seg, Dirs[row.pi].ToString());
+        return (seg, widths, vis);
     }
 
     private void DrawRow(int y, (int pi, int s, int e, bool last) row, int ww, int x0)
     {
-        var (seg, vis, _) = RowVisual(row, ww);
+        var (seg, widths, _) = RowVisual(row, ww);
         string st = Sty[row.pi];
+        int ind = RowIndent(pi: row.pi, s: row.s);
 
-        for (int k = 0; k < vis.Length && x0 + k < App.MinW; k++)
+        // LTR: place each char at its expanded display column. RTL: keep the legacy
+        // bidi-visual path (indents are cosmetic there).
+        if (Dirs[row.pi] == 'L')
         {
-            int attr = App.A_N;
-            // Map visual position back to logical position for style lookup
-            // Simplified: use the character's position in seg if it exists
-            int logPos = -1;
+            int col = ind;
             for (int li = 0; li < seg.Length; li++)
-                if (vis[k] == seg[li] && (logPos = row.s + li) >= 0) break;
-
-            if (logPos >= 0 && logPos < st.Length)
             {
-                int code = st[logPos] - '0';
-                if (code is 1 or 3) attr |= App.A_B;
-                if (code is 2 or 3) attr |= App.A_U;
+                int attr = App.A_N;
+                int logPos = row.s + li;
+                if (logPos < st.Length)
+                {
+                    int code = st[logPos] - '0';
+                    if (code is 1 or 3) attr |= App.A_B;
+                    if (code is 2 or 3) attr |= App.A_U;
+                }
+                for (int w = 0; w < widths[li]; w++)
+                {
+                    int x = x0 + col + w;
+                    if (x >= App.MinW) return;
+                    char ch = w == 0 ? seg[li] : ' ';   // tab renders as its first cell, rest blank
+                    App.PutCells(y, x, ch.ToString(), attr);
+                }
+                col += widths[li];
             }
-            App.PutCells(y, x0 + k, vis[k].ToString(), attr);
+        }
+        else
+        {
+            string vis = Bidi.BidiVisual(seg + new string(' ', Math.Max(1, ww + 1 - seg.Length)), "R");
+            for (int k = 0; k < vis.Length && x0 + ind + k < App.MinW; k++)
+            {
+                int attr = App.A_N;
+                int logPos = -1;
+                for (int li = 0; li < seg.Length; li++)
+                    if (vis[k] == seg[li] && (logPos = row.s + li) >= 0) break;
+                if (logPos >= 0 && logPos < st.Length)
+                {
+                    int code = st[logPos] - '0';
+                    if (code is 1 or 3) attr |= App.A_B;
+                    if (code is 2 or 3) attr |= App.A_U;
+                }
+                App.PutCells(y, x0 + ind + k, vis[k].ToString(), attr);
+            }
         }
     }
 
@@ -359,10 +491,43 @@ public sealed class WPDoc : Doc
                 App.Msg = Localizer.S(Dirs[_pi] == 'R' ? "ParagraphNowRTL" : "ParagraphNowLTR");
                 break;
 
+            case "A-I":   // left indent: 0 → 4 → 8 → … → 24 → 0
+                IndL[_pi] = (IndL[_pi] + 4) % 28;
+                Dirty = true;
+                App.Msg = Localizer.T("LeftIndentN", IndL[_pi]);
+                break;
+
+            case "A-O":   // right indent: 0 → 4 → … → 16 → 0 (narrows the wrap width on screen and in print)
+                IndR[_pi] = (IndR[_pi] + 4) % 20;
+                Dirty = true;
+                App.Msg = Localizer.T("RightIndentN", IndR[_pi]);
+                break;
+
+            case "A-H":   // hanging indent: continuation lines start 4 cols in
+                Hang[_pi] = !Hang[_pi];
+                Dirty = true;
+                App.Msg = Localizer.S(Hang[_pi] ? "HangingOn" : "HangingOff");
+                break;
+
+            case "AS-H":   // Alt-Shift-H: set header
+                string? h = await App.AskAsync("HeaderPrompt", _header);
+                if (h is not null) { _header = h; Dirty = true; }
+                break;
+
+            case "AS-F":   // Alt-Shift-F: set footer ("Pg" → page number when printing)
+                string? f = await App.AskAsync("FooterPrompt", _footer);
+                if (f is not null) { _footer = f; Dirty = true; }
+                break;
+
             case "A-F": await FindAsync(); break;
             case "A-R": await ReplaceAllAsync(); break;
             case "A-W": await SpellCheckAsync(); break;
             case "A-P": await ExportAsync(); break;
+
+            case "AS-P":   // Alt-Shift-P: print to PDF (Alt-P is the .txt export)
+                string? pdfFn = await PrinterEmulatorPdfService.PrintWpAsync(App, this);
+                if (pdfFn is not null) App.Msg = Localizer.T("PdfSavedTo", pdfFn);
+                break;
         }
     }
 
@@ -574,23 +739,80 @@ public sealed class WPDoc : Doc
         string? fn = await ExportPathAsync(".txt", "PrintToTextFile");
         if (fn is null) return;
 
-        var lines = new List<string>();
-        foreach (string p in Paras)
+        var pages = BuildPrintPages();
+        int totalLines = pages.Sum(p => p.Count - 2);   // minus header + footer per page
+        var flat = new List<string>(totalLines);
+        foreach (var pg in pages) flat.AddRange(pg);
+
+        await DownloadText(fn, string.Join('\n', flat) + '\n');
+        App.Msg = Localizer.T("PrintedNLinesToFile", totalLines, fn);
+    }
+
+    /// <summary>
+    /// Compose the document into fixed-width print pages: each page is a header line,
+    /// up to 58 body lines (76 columns, indents applied, tabs expanded), and a footer
+    /// where the literal "Pg" becomes the page number. Shared by the .txt export and the
+    /// PDF printer so both render identically.
+    /// </summary>
+    public List<List<string>> BuildPrintPages()
+    {
+        const int width = 76;          // print line width
+        const int perPage = 58;        // text lines between header and footer
+
+        // Single pass: wrap each paragraph between the left and right indents,
+        // apply indent + expand tabs to 8-column stops.
+        var outLines = new List<string>();
+        for (int pi = 0; pi < Paras.Count; pi++)
         {
-            // Simple word wrap at 76 columns
-            int i = 0;
-            while (i < p.Length)
+            string p = Paras[pi];
+            int wrapW = Math.Max(10, width - IndL[pi] - IndR[pi]);   // space between indents
+            // Wrap into segments; an empty paragraph yields one blank line.
+            var segs = new List<(string text, int start)>();
+            if (p.Length == 0)
+                segs.Add(("", 0));
+            else
             {
-                if (p.Length - i <= 76) { lines.Add(p[i..]); break; }
-                int sp = p.LastIndexOf(' ', Math.Min(i + 76, p.Length - 1));
-                int brk = sp > i ? sp + 1 : i + 76;
-                lines.Add(p[i..brk]);
-                i = brk;
+                int i = 0;
+                while (true)
+                {
+                    if (p.Length - i <= wrapW) { segs.Add((p[i..], i)); break; }
+                    int brk = i + wrapW;
+                    for (int j = i + wrapW; j > i; j--)
+                        if (p[j - 1] is ' ' or '\t') { brk = j; break; }
+                    segs.Add((p[i..brk], i));
+                    i = brk;
+                }
+            }
+
+            for (int r = 0; r < segs.Count; r++)
+            {
+                var (seg, start) = segs[r];
+                int ind = RowIndent(pi, start);
+                var sb = new System.Text.StringBuilder();
+                int col = 0;
+                foreach (char ch in seg)
+                {
+                    if (ch == '\t') { int stop = TabStop(col); sb.Append(new string(' ', Math.Max(1, stop - col))); col = stop; }
+                    else { sb.Append(ch); col++; }
+                }
+                outLines.Add(new string(' ', ind) + sb.ToString());
             }
         }
 
-        await DownloadText(fn, string.Join('\n', lines) + '\n');
-        App.Msg = Localizer.T("PrintedNLinesToFile", lines.Count, fn);
+        // Paginate: header line, up to perPage text lines, footer ("Pg" → page number).
+        var pages = new List<List<string>>();
+        for (int pg = 0; pg * perPage < outLines.Count || pg == 0; pg++)
+        {
+            int page = pg + 1;
+            var lines = new List<string> { _header };
+            for (int i = pg * perPage; i < Math.Min(outLines.Count, (pg + 1) * perPage); i++)
+                lines.Add(outLines[i]);
+            string foot = _footer.Replace("Pg", page.ToString());
+            if (_footer.Length == 0) foot = Localizer.T("PrintPageN", page);
+            lines.Add(foot);
+            pages.Add(lines);
+        }
+        return pages;
     }
 
     /// <summary>Help text for the Word Processor (includes spell check).</summary>

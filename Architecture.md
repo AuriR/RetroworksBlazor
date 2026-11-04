@@ -175,15 +175,22 @@ classDiagram
 
 **Word Processor (`WPDoc`)** — `Core/WPDoc.cs`:
 
-- `Paras` (`List<string>`): one entry per paragraph.
+- `Paras` (`List<string>`): one entry per paragraph. May contain real tab characters (8-column stops).
 - `Dirs` (`List<char>`): per-paragraph base direction, `'L'` or `'R'`.
 - `Sty` (`List<string>`): per-character style bits (`'0'` plain, `'1'` bold, `'2'` underline, `'3'` both). Omitted from JSON when all plain.
+- **Formatting (v1.6):** `IndL`/`IndR` (`List<int>`) per-paragraph left/right indent in columns; `Hang` (`List<bool>`) hanging indent (continuation lines start 4 cols further in); `_header`/`_footer` document strings (the footer's literal `Pg` is replaced by the page number when printing). Omitted from JSON when at defaults.
+- **Rendering:** LTR rows place each character at its expanded display column (a tab spans to the next 8-column stop) offset by the left indent; text wraps within the space between the left and right indents (`ww - IndL - IndR`, min 10 cols), so a right indent visibly narrows the paragraph. The ruler shows a `v` marker at the current paragraph's left indent. RTL paragraphs keep the legacy bidi-visual path with indents applied as an offset. The status bar shows `Pg N`, `Indent N` (left), `RInd N` (right), and `Hanging` when set. Indents cycle in 4-column steps via Alt‑I / Alt‑O (no dedicated undo — keep pressing until it reads 0).
+- **Print export (Alt‑P):** paginates to 76-column lines with a header line, up to 58 text lines per page, and a footer (`Pg` → page number; defaults to `- Page N -`). Indents are applied and tabs expanded in the output.
+- **PDF print (Alt‑Shift‑P):** `PrinterEmulatorPdfService.PrintWpAsync` calls `BuildPrintPages()` (shared with text export) then `App.PrintPdfAsync(fileName, pages)` → JS `printPdf()`. The JS side dynamically loads pdf-lib + fontkit (UMD, cached after first use), embeds the bundled ImgWriter NLQ TrueType font (`wwwroot/fonts/imgwriter-nlq.ttf`, converted from OTF/CFF because pdf-lib's fontkit chokes on the incomplete CFF Subrs table in this FontStruct font), and renders each page as US Letter (612×792 pt) with 40 pt margins, monospace character placement at `font.widthOfTextAtSize('M', fontSize)` advance width. The PDF is downloaded via a Blob URL.
 
 **Data Base (`DBDoc`)** — `Core/DBDoc.cs`:
 
 - `Fields` (`List<string>`): column headers/categories.
 - `Records` (`List<List<string>>`): rows of string values.
 - `Widths` (`int[]`): per-column display width.
+- **Lookup lists (v1.6):** `Lookups` (`List<string?>`) — optional comma-separated allowed values per field. When a field has a list, editing it first offers the values as a numbered menu (plus "Type a different value…"). Set with Alt‑L.
+- **Highlight rules (v1.6):** `Rules` (`List<(int Field, string Op, string Val)>`) — conditional formatting; matching records render in reverse video. Operators: `contains`, `equals`, `starts`, `empty`. Managed via Alt‑R (add / delete / clear).
+- **Reports (v1.6):** Alt‑G offers a *table report* (pick columns as a comma list, auto-aligned widths) or a *label report* (first N fields become mailing-label lines), both exported to `.txt`.
 - Supports single-record vs. multi-record layouts, filter, sort, select.
 
 **Spreadsheet (`SSDoc`)** — `Core/SSDoc.cs`:
@@ -365,6 +372,7 @@ Any other single printable character passes through unchanged (so formulas like 
 | `loadFile(accept)` | Opens the file picker; resolves with text or `null` on cancel/timeout. |
 | `saveLocalFile(name, json)` / `loadLocalFile(name)` / `listLocalFiles()` / `deleteLocalFile(name)` | CRUD over the `retroworks.files` localStorage namespace. |
 | `setTheme(theme, crt)` | Applies phosphor theme + CRT emulation to `<html>`. |
+| `printPdf(fileName, pages)` | Dynamically loads pdf-lib + fontkit (UMD, cached), embeds the bundled ImgWriter NLQ TTF font, renders paginated text as a US Letter PDF with monospace placement, and triggers a download. |
 | `reportError(msg)` | Surfaces an app-loop exception in a red banner at the bottom of the screen. |
 
 ---
@@ -502,5 +510,6 @@ Consequently, several areas that a typical ASP.NET/.NET architecture doc would c
 | 1.0     | 2026-10-27 | Copilot SDK   | Initial architecture document for the Blazor WASM port.        |
 | 1.1     | 2026-10-27 | Copilot SDK   | Restored the Component & File Map diagram (lost in earlier edits) and hardened all mermaid diagrams against parse errors (removed HTML entities, unquoted parenthesized subgraph titles, and pipe-delimited edge labels). Now exactly 5 clean diagrams. |
 | 1.5     | 2026-11-02 | Copilot SDK   | App v1.5: splash screen now offers "Start RetroWorks" / "What's New"; spell-check dictionary expanded to ~5,000 words; formula engine gained string/date/lookup functions and mixed-type (number-or-text) values; spreadsheet column insert/delete added; unexpected-exception safety net creates an "Error Log" document on the Desktop instead of freezing. |
+| 1.6     | 2026-11-03 | Copilot SDK   | App v1.6: Word Processor formatting — real tab stops (8 columns), per-paragraph left/right/hanging indents (Alt‑I/Alt‑O/Alt‑H) with a ruler marker, and header/footer with page numbers (Alt‑Shift‑H/F) shown on screen (`Pg N`) and in paginated print export. PDF printing (Alt‑Shift‑P) via `PrinterEmulatorPdfService` + JS pdf-lib/fontkit with the bundled ImgWriter NLQ TrueType font (OTF→TTF conversion to work around a CFF Subrs parsing bug). Data Base — per-field lookup lists offered as a numbered menu when editing (Alt‑L), conditional highlight rules that render matching records in reverse video (Alt‑R), and report formats: aligned table report with column selection plus mailing-label report, both exported to `.txt` (Alt‑G). All new state serializes to the file JSON; EN + HE strings added. |
 
 > **Maintenance rule.** This document is a living artifact: it must be updated whenever non‑trivial changes are made to the application (new document type, new persistence mechanism, significant refactor of flows, version bumps, etc.). If you change this code and do not update `Architecture.md`, revert the change.

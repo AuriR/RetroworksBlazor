@@ -17,7 +17,19 @@ public sealed class DBDoc : Doc
     private (int field, bool desc)? _sortState;
     private bool _adding;
 
+    // Step 5: per-field lookup lists (comma-separated allowed values) + highlight rules.
+    public List<string?> Lookups { get; set; } = [];
+    public List<(int Field, string Op, string Val)> Rules { get; set; } = [];
+
     public DBDoc(App app, string name) : base(app, name) { }
+
+    private void PadLookups()
+    {
+        int n = Fields.Count;
+        var l = Lookups.ToList();
+        while (l.Count < n) l.Add(null);
+        Lookups = [.. l.Take(n)];
+    }
 
     private void PadWidths()
     {
@@ -84,6 +96,7 @@ public sealed class DBDoc : Doc
             if (_f < _ftop) _ftop = _f;
             if (_f >= _ftop + vh) _ftop = _f - vh + 1;
 
+            bool ruleHit = RuleMatch(rows[_cur]);
             for (int j = 0; j < vh; j++)
             {
                 int fi = _ftop + j;
@@ -92,7 +105,7 @@ public sealed class DBDoc : Doc
                 App.Put(y, 2, Fields[fi][..Math.Min(nl, Fields[fi].Length)].PadLeft(nl) + ":", App.A_B);
                 string val = rec[fi][..Math.Min(W - nl - 7, rec[fi].Length)];
                 if (fi == _f) App.Put(y, nl + 4, val.Length > 0 ? val : " ", App.A_R);
-                else App.Put(y, nl + 4, val);
+                else App.Put(y, nl + 4, val, ruleHit ? App.A_R : App.A_N);
             }
         }
         else
@@ -121,12 +134,13 @@ public sealed class DBDoc : Doc
                 // render the literal text ">4". Use PadLeft for right-alignment.
                 App.Put(5 + j, 0, (ri + 1).ToString().PadLeft(4), ri == _cur ? App.A_R : App.A_B);
 
+                bool ruleHit = RuleMatch(rows[ri]);
                 foreach (var (fi, x) in vis)
                 {
                     int w = ColW(fi);
                     bool cur = ri == _cur && fi == _f;
                     string val = rec[fi][..Math.Min(w - 1, rec[fi].Length)].PadRight(w - 1);
-                    App.Put(5 + j, x, val, cur ? App.A_R : App.A_N);
+                    App.Put(5 + j, x, val, (cur || ruleHit) ? App.A_R : App.A_N);
                 }
             }
         }
@@ -147,6 +161,22 @@ public sealed class DBDoc : Doc
             int H = App.MinH, W = App.MinW;
             string label = Fields[_f] + ": ";
             App.Put(H - 1, 0, new string(' ', W - 1));
+
+            // Lookup list: offer the predefined values as a numbered menu first.
+            PadLookups();
+            if (Lookups[_f] is { Length: > 0 } lk)
+            {
+                var opts = lk.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+                if (opts.Count > 0)
+                {
+                    var labels = new List<object?>();
+                    for (int oi = 0; oi < opts.Count && oi < 9; oi++) labels.Add((oi + 1).ToString() + ". " + opts[oi]);
+                    labels.Add(Localizer.S("TypeOtherValue"));
+                    int? pick = await App.SelectAsync([Localizer.T("LookupFor", Fields[_f])], labels, esc: "EscapeCancel");
+                    if (pick is null) { _adding = false; return; }
+                    if (pick < opts.Count) init = opts[pick.Value];   // picked a predefined value
+                }
+            }
 
             string? text = await App.AskAsync("", init);
             if (text is null) { _adding = false; return; }
@@ -285,6 +315,10 @@ public sealed class DBDoc : Doc
 
             case "A-E": await CategoriesAsync(); break;
 
+            case "A-L": await LookupListAsync(); break;
+
+            case "A-R": await RulesAsync(); break;
+
             case "A-W":
                 string? tw = await App.AskAsync(Localizer.T("WidthOfName", Fields[_f]), ColW(_f).ToString());
                 if (tw is not null && int.TryParse(tw, out int w))
@@ -311,6 +345,8 @@ public sealed class DBDoc : Doc
                     App.Msg = Localizer.S("RecordPastedBelow");
                 }
                 break;
+
+            case "A-G": await ReportAsync(); break;
 
             case "A-P": await ExportAsync(); break;
         }
@@ -409,6 +445,184 @@ public sealed class DBDoc : Doc
         }
     }
 
+    // ---- Step 5: lookup lists & category rules ----
+
+    /// <summary>True if the record at index recIdx matches any highlight rule.</summary>
+    private bool RuleMatch(int recIdx)
+    {
+        var rec = Records[recIdx];
+        foreach (var (fi, op, val) in Rules)
+        {
+            if (fi >= rec.Count) continue;
+            string v = rec[fi].Trim();
+            bool hit = op switch
+            {
+                "contains" => v.Contains(val, StringComparison.OrdinalIgnoreCase),
+                "equals" => string.Equals(v, val, StringComparison.OrdinalIgnoreCase),
+                "starts" => v.StartsWith(val, StringComparison.OrdinalIgnoreCase),
+                _ => false,
+            };
+            if (hit) return true;
+        }
+        return false;
+    }
+
+    private async Task LookupListAsync()
+    {
+        PadLookups();
+        string? t = await App.AskAsync(Localizer.T("LookupFor", Fields[_f]), Lookups[_f] ?? "");
+        if (t is null) return;
+        Lookups[_f] = t.Trim().Length > 0 ? t.Trim() : null;
+        Dirty = true;
+        App.Msg = Localizer.S(Lookups[_f] is null ? "LookupCleared" : "LookupSet");
+    }
+
+    private async Task RulesAsync()
+    {
+        while (true)
+        {
+            var labels = new List<object?>();
+            for (int ri = 0; ri < Rules.Count; ri++)
+                labels.Add((ri + 1) + ". " + RuleText(Rules[ri]));
+            if (Rules.Count == 0) labels.Add(Localizer.S("NoRulesYet"));
+            labels.Add("---");
+            labels.Add(Localizer.S("AddRule"));
+            labels.Add(Localizer.S("ClearAllRules"));
+
+            int? sel = await App.SelectAsync([Localizer.S("HighlightRules")], labels, esc: "EscapeCancel");
+            if (sel is null) return;
+
+            // Menu layout (0-based list indices): [rules… | "NoRulesYet"] + "---" + "Add rule" + "Clear all".
+            // When there are no rules the "NoRulesYet" placeholder occupies a slot, shifting the
+            // trailing actions down by one — so compute their positions from the separator.
+            int sepIdx = Rules.Count + (Rules.Count == 0 ? 1 : 0);   // position of "---"
+            int addIdx = sepIdx + 1;                                 // "Add rule"
+            int clearIdx = sepIdx + 2;                               // "Clear all rules"
+
+            if (sel.Value == addIdx)
+            {
+                var fi = await PickFieldAsync();
+                if (fi is null) continue;
+                int? opk = await App.SelectAsync([Localizer.S("RuleCondition")],
+                    ["Contains", "Equals", "StartsWith", Localizer.S("IsEmpty")], esc: "EscapeCancel");
+                if (opk is null) continue;
+                string op = opk.Value switch { 0 => "contains", 1 => "equals", 2 => "starts", _ => "empty" };
+                string val = "";
+                if (op != "empty")
+                {
+                    string? tv = await App.AskAsync("RuleValue", "");
+                    if (tv is null) continue;
+                    val = tv.Trim();
+                }
+                Rules.Add((fi.Value, op, val));
+                Dirty = true;
+                App.Msg = Localizer.S("RuleAdded");
+            }
+            else if (sel.Value == clearIdx)
+            {
+                Rules.Clear();
+                Dirty = true;
+                App.Msg = Localizer.S("RulesCleared");
+            }
+            // SelectAsync returns a 0-based list index: rules occupy slots 0..Rules.Count-1.
+            else if (sel.Value >= 0 && sel.Value < Rules.Count)
+            {
+                int removed = sel.Value + 1;   // 1-based for the message
+                Rules.RemoveAt(sel.Value);
+                Dirty = true;
+                App.Msg = Localizer.T("RuleDeleted", removed);
+            }
+        }
+    }
+
+    private string RuleText((int Field, string Op, string Val) r)
+    {
+        string opName = r.Op switch { "contains" => "Contains", "equals" => "Equals", "starts" => "StartsWith", _ => Localizer.S("IsEmpty") };
+        return Fields[r.Field] + " " + opName + (r.Op == "empty" ? "" : " \"" + r.Val + "\"");
+    }
+
+    private async Task<int?> PickFieldAsync()
+    {
+        var labels = new List<object?>();
+        for (int i = 0; i < Fields.Count; i++) labels.Add((i + 1) + ". " + Fields[i]);
+        int? p = await App.SelectAsync([Localizer.S("WhichField")], labels, esc: "EscapeCancel");
+        return p;
+    }
+
+    // ---- Step 6: report formats (table & label) exported to .txt ----
+
+    private async Task ReportAsync()
+    {
+        int? kind = await App.SelectAsync([Localizer.S("ReportMenu")],
+            [Localizer.S("TableReport"), Localizer.S("LabelReport")], esc: "EscapeCancel");
+        if (kind is null) return;
+
+        var rows = Rows();
+        if (rows.Count == 0) { App.Msg = Localizer.S("NoRecordsYet"); return; }
+
+        string? fn = kind.Value == 0
+            ? await ExportPathAsync(".txt", "ReportToTextFile")
+            : await ExportPathAsync(".txt", "LabelReportToFile");
+        if (fn is null) return;
+
+        var sb = new System.Text.StringBuilder();
+        if (kind.Value == 0)
+            await BuildTableReport(sb, rows);
+        else
+            await BuildLabelReport(sb, rows);
+
+        await DownloadText(fn, sb.ToString());
+        App.Msg = Localizer.T("ReportSavedTo", fn);
+    }
+
+    /// <summary>Aligned text table: pick columns (comma list or all), auto widths.</summary>
+    private async Task BuildTableReport(System.Text.StringBuilder sb, List<int> rows)
+    {
+        string? colInput = await App.AskAsync("WhichColumns", "");
+        if (colInput is null) return;
+
+        var cols = ParseColumnList(colInput);
+        int[] w = new int[cols.Count];
+        for (int c = 0; c < cols.Count; c++)
+        {
+            int m = Fields[cols[c]].Length;
+            foreach (int ri in rows) m = Math.Max(m, Records[ri][cols[c]].Length);
+            w[c] = Math.Min(24, Math.Max(3, m));
+        }
+
+        sb.AppendLine(string.Join(" ", cols.Zip(w, (ci, wi) => Fields[ci].PadRight(wi))));
+        sb.AppendLine(string.Join(" ", w.Select(x => new string('-', x))));
+        foreach (int ri in rows)
+            sb.AppendLine(string.Join("  ", cols.Zip(w, (ci, wi) => Records[ri][ci].PadRight(wi))));
+    }
+
+    /// <summary>Mailing-label blocks: first N categories become the label lines.</summary>
+    private async Task BuildLabelReport(System.Text.StringBuilder sb, List<int> rows)
+    {
+        string? perInput = await App.AskAsync("LinesPerLabel", "4");
+        if (perInput is null) return;
+        int per = int.TryParse(perInput.Trim(), out int p) ? Math.Max(1, Math.Min(6, p)) : 4;
+
+        for (int k = 0; k < rows.Count; k++)
+        {
+            var rec = Records[rows[k]];
+            for (int j = 0; j < per && j < Fields.Count; j++)
+                sb.AppendLine(rec[j]);
+            if (k < rows.Count - 1) sb.AppendLine();   // blank line between labels
+        }
+    }
+
+    /// <summary>Parse "1,3,5" → field indices [0,2,4]; blank/invalid → all fields in order.</summary>
+    private List<int> ParseColumnList(string input)
+    {
+        var result = new List<int>();
+        foreach (var part in input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            if (int.TryParse(part, out int n) && n >= 1 && n <= Fields.Count)
+                result.Add(n - 1);
+        if (result.Count == 0) result.AddRange(Enumerable.Range(0, Fields.Count));
+        return result;
+    }
+
     private async Task ExportAsync()
     {
         string? fn = await ExportPathAsync(".csv", "ExportRecordsToCsv");
@@ -432,7 +646,12 @@ public sealed class DBDoc : Doc
     public override Dictionary<string, object?> ToJson()
     {
         PadWidths();
-        return new() { ["fields"] = Fields, ["records"] = Records, ["widths"] = Widths };
+        PadLookups();
+        var data = new Dictionary<string, object?> { ["fields"] = Fields, ["records"] = Records, ["widths"] = Widths };
+        if (Lookups.Any(l => l is not null)) data["lookups"] = Lookups;
+        if (Rules.Count > 0)
+            data["rules"] = Rules.Select(r => new { field = r.Field, op = r.Op, val = r.Val }).ToList();
+        return data;
     }
 
     public override int Size() => Records.Sum(rec => rec.Sum(v => v.Length + 1));
@@ -450,6 +669,30 @@ public sealed class DBDoc : Doc
             w.AddRange(widthsEl.EnumerateArray().Select(e => e.GetInt32()));
         Widths = [.. w];
         PadWidths();
+
+        Lookups = Enumerable.Repeat<string?>(null, n).ToList();
+        if (d.TryGetProperty("lookups", out var lkEl) && lkEl.ValueKind == JsonValueKind.Array)
+        {
+            int li = 0;
+            foreach (var e in lkEl.EnumerateArray())
+            {
+                if (li >= n) break;
+                Lookups[li] = e.ValueKind == JsonValueKind.String ? (e.GetString() ?? "") : null;
+                li++;
+            }
+        }
+
+        Rules = [];
+        if (d.TryGetProperty("rules", out var ruEl) && ruEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in ruEl.EnumerateArray())
+            {
+                int fi = e.GetProperty("field").GetInt32();
+                string op = e.GetProperty("op").GetString() ?? "contains";
+                string val = e.TryGetProperty("val", out var ve) ? (ve.GetString() ?? "") : "";
+                Rules.Add((fi, op, val));
+            }
+        }
     }
 
     protected override string HelpText() => Localizer.Help("DB");

@@ -31,6 +31,8 @@
         // Set up JS interop functions on the App (download / file picker).
         _app.DownloadFileFunc = async (fileName, content) =>
             await _jsModule.InvokeVoidAsync("downloadFile", fileName, content);
+        _app.PrintPdfFunc = async (fileName, pages) =>
+            await _jsModule.InvokeVoidAsync("printPdf", fileName, pages);
         _app.LoadFileFunc = async accept =>
             await _jsModule.InvokeAsync<string>("loadFile", accept);
 

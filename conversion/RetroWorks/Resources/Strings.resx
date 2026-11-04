@@ -155,6 +155,19 @@
   <data name="ReplacedNOccurrences" xml:space="preserve"><value>Replaced {0} occurrence(s).</value></data>
   <data name="PrintToTextFile" xml:space="preserve"><value>Print to text file (download): </value></data>
   <data name="PrintedNLinesToFile" xml:space="preserve"><value>Printed {0} lines to {1}</value></data>
+  <data name="PrintToPdfFile" xml:space="preserve"><value>Print to PDF file (download): </value></data>
+  <data name="PdfSavedTo" xml:space="preserve"><value>PDF saved to {0}</value></data>
+  <data name="PgN" xml:space="preserve"><value>Pg {0}</value></data>
+  <data name="IndentN" xml:space="preserve"><value>Indent {0}</value></data>
+  <data name="RIndN" xml:space="preserve"><value>RInd {0}</value></data>
+  <data name="Hanging" xml:space="preserve"><value>Hanging</value></data>
+  <data name="LeftIndentN" xml:space="preserve"><value>Left indent {0}.</value></data>
+  <data name="RightIndentN" xml:space="preserve"><value>Right indent {0}.</value></data>
+  <data name="HangingOn" xml:space="preserve"><value>Hanging indent on.</value></data>
+  <data name="HangingOff" xml:space="preserve"><value>Hanging indent off.</value></data>
+  <data name="HeaderPrompt" xml:space="preserve"><value>Header (blank to clear): </value></data>
+  <data name="FooterPrompt" xml:space="preserve"><value>Footer, Pg = page number (blank to clear): </value></data>
+  <data name="PrintPageN" xml:space="preserve"><value>- Page {0} -</value></data>
 
   <!-- Spreadsheet -->
   <data name="TypeEntryOrAltCommands" xml:space="preserve"><value>Type entry or use Alt commands        Alt-K: Help</value></data>
@@ -170,6 +183,7 @@
   <data name="ErrorLogWhen" xml:space="preserve"><value>Time: {0}</value></data>
   <data name="ErrorLogType" xml:space="preserve"><value>Type: {0}</value></data>
   <data name="ErrorLogContext" xml:space="preserve"><value>Where: {0}</value></data>
+  <data name="ErrorLogInDoc" xml:space="preserve"><value>while working in "{0}"</value></data>
   <data name="ErrorLogCell" xml:space="preserve"><value>cell {0} = "{1}"</value></data>
   <data name="DivisionByZero" xml:space="preserve"><value>division by zero</value></data>
   <data name="SyntaxError" xml:space="preserve"><value>syntax error</value></data>
@@ -231,8 +245,35 @@
   <data name="ExportRecordsToCsv" xml:space="preserve"><value>Export records to CSV file (download): </value></data>
   <data name="ExportedNRecordsToFile" xml:space="preserve"><value>Exported {0} records to {1}</value></data>
 
+  <!-- Data base: lookup lists & rules -->
+  <data name="LookupFor" xml:space="preserve"><value>Allowed values for "{0}" (comma-separated, blank to clear): </value></data>
+  <data name="TypeOtherValue" xml:space="preserve"><value>Type a different value...</value></data>
+  <data name="LookupSet" xml:space="preserve"><value>Lookup list set.</value></data>
+  <data name="LookupCleared" xml:space="preserve"><value>Lookup list cleared.</value></data>
+  <data name="HighlightRules" xml:space="preserve"><value>HIGHLIGHT RULES</value></data>
+  <data name="NoRulesYet" xml:space="preserve"><value>(no rules yet)</value></data>
+  <data name="AddRule" xml:space="preserve"><value>Add a rule...</value></data>
+  <data name="ClearAllRules" xml:space="preserve"><value>Clear all rules</value></data>
+  <data name="WhichField" xml:space="preserve"><value>Which field?</value></data>
+  <data name="RuleCondition" xml:space="preserve"><value>When the value...</value></data>
+  <data name="IsEmpty" xml:space="preserve"><value>is empty</value></data>
+  <data name="RuleValue" xml:space="preserve"><value>Value to match: </value></data>
+  <data name="RuleAdded" xml:space="preserve"><value>Rule added.</value></data>
+  <data name="RulesCleared" xml:space="preserve"><value>All rules cleared.</value></data>
+  <data name="RuleDeleted" xml:space="preserve"><value>Rule {0} deleted.</value></data>
+
+  <!-- Data base: reports -->
+  <data name="ReportMenu" xml:space="preserve"><value>REPORT</value></data>
+  <data name="TableReport" xml:space="preserve"><value>Table report (aligned columns)</value></data>
+  <data name="LabelReport" xml:space="preserve"><value>Label report (mailing labels)</value></data>
+  <data name="WhichColumns" xml:space="preserve"><value>Columns to include, e.g. 1,3,5 (blank = all): </value></data>
+  <data name="LinesPerLabel" xml:space="preserve"><value>Lines per label (1-6): </value></data>
+  <data name="ReportToTextFile" xml:space="preserve"><value>Table report to text file (download): </value></data>
+  <data name="LabelReportToFile" xml:space="preserve"><value>Label report to text file (download): </value></data>
+  <data name="ReportSavedTo" xml:space="preserve"><value>Report saved to {0}</value></data>
+
   <!-- Help text -->
-  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   version 1.4
+  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   version 1.6
 
 An integrated Word Processor, Data Base and Spreadsheet in the style of
 the 80-column, green-screen productivity software of the Apple ][ years.
@@ -247,7 +288,11 @@ Files are plain JSON:  .rwp (word processor)  .rdb (data base)
                        .rss (spreadsheet)
 
 Alt takes the place of the Open-Apple key.  Alt-K shows the help for
-whichever kind of file you are working on.</value></data>
+whichever kind of file you are working on.
+
+The print font, ImgWriter NLQ, is licensed from John H. Isles under a
+Creative Commons Attribution license:
+https://fontstruct.com/fontstructions/show/473428</value></data>
 
   <data name="HelpWP" xml:space="preserve"><value>WORD PROCESSOR COMMANDS          (Alt replaces the Open-Apple key)
 
@@ -263,9 +308,15 @@ Alt-V ............ paste paragraph(s) above the cursor
 Alt-F ............ find (again)        Alt-R ........... replace all
 Alt-W ............ spell check: 1/2=pick A=accept R=replace I=gnore S=kip
                   (English words only; Hebrew text is not checked)
-Alt-P ............ "print" to a plain .txt file (76 columns, download)
+Alt-P ............ "print" to a .txt file (76 cols, pages + header/footer)
+Alt-Shift-P ...... "print" to PDF (ImgWriter NLQ font, US Letter)
 Alt-L ............ paragraph direction: left-to-right / right-to-left
 Alt-B ............ bold on / off       Alt-U ........... underline on / off
+
+Formatting (current paragraph):
+Tab ............... tab stop (8 columns)  Alt-I ......... left indent (+4, wraps at 24)
+Alt-O ............ right indent          Alt-H ......... hanging indent on/off
+Alt-Shift-H ...... set header            Alt-Shift-F ..... set footer ("Pg" = page no.)
 
 Alt-S ............ save to disk        Alt-Shift-S ..... download file
 Alt-Q ............ quick change         Alt-K / F1 ...... this help
@@ -331,6 +382,11 @@ Alt-F ............ select only records containing some text
                     (Return on an empty line selects all again)
 Alt-A ............ arrange (sort) by this category; again = reverse
 Alt-E ............ change categories: rename, insert, delete, move
+Alt-L ............ lookup list for this field (comma-separated values)
+                  → editing a field offers the list as a numbered menu
+Alt-R ............ highlight rules: reverse-video rows whose value
+                  contains / equals / starts with text, or is empty
+Alt-G ............ report: aligned table (pick columns) or mailing labels
 Alt-W ............ width of this category in the table
 Alt-P ............ export the selected records to CSV
 Alt-S ............ save to disk      Alt-Shift-S ..... download file

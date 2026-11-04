@@ -22,6 +22,18 @@ public static class Text
         return sb.ToString();
     }
 
+    /// <summary>Like <see cref="Clean"/> but keeps tab characters (WP stores real tabs).</summary>
+    public static string CleanKeepTabs(string s)
+    {
+        var sb = new StringBuilder(s.Length);
+        foreach (char ch in s)
+        {
+            if (ch == '\t' || (ch >= ' ' && ch != '\x7f' && !IsZeroWidth(ch)))
+                sb.Append(ch);
+        }
+        return sb.ToString();
+    }
+
     public static bool IsZeroWidth(char ch) =>
         char.GetUnicodeCategory(ch) is UnicodeCategory.NonSpacingMark
             or UnicodeCategory.EnclosingMark
