@@ -404,22 +404,30 @@ public sealed class SSDoc : Doc, FormulaEngine.ISheet
                 break;
 
             case "A-C":
-                if (raw.Length > 0) { ClipSs = (raw, _r, _c, "copy"); App.Msg = Localizer.T("RefCopied", refStr); }
+                if (raw.Length > 0) { ClipSs = (raw, _r, _c, "copy"); App.ClipText = raw; App.Msg = Localizer.T("RefCopied", refStr); }
                 break;
 
             case "A-X":
-                if (raw.Length > 0) { ClipSs = (raw, _r, _c, "cut"); SetCell(refStr, ""); App.Msg = Localizer.T("RefCut", refStr); }
+                if (raw.Length > 0) { ClipSs = (raw, _r, _c, "cut"); App.ClipText = raw; SetCell(refStr, ""); App.Msg = Localizer.T("RefCut", refStr); }
                 break;
 
             case "A-V":
-                if (ClipSs is null) { App.Msg = Localizer.S("ClipboardEmpty"); }
-                else
+                if (ClipSs is not null)
                 {
                     var (craw, r0, c0, mode) = ClipSs.Value;
                     string newRaw = mode == "copy" && FormulaEngine.IsValue(craw)
                         ? FormulaEngine.ShiftRefs(craw, _r - r0, _c - c0) : craw;
                     SetCell(refStr, newRaw);
                 }
+                else if (App.ClipText.Length > 0)
+                {
+                    // Cross-module paste: place the shared text in this cell. Multi-line text
+                    // fills downward from the current cell (one line per row).
+                    var lines = App.ClipText.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+                    for (int li = 0; li < lines.Length; li++)
+                        SetCell(FormulaEngine.RefName(_c, _r + li), Text.Clean(lines[li]));
+                }
+                else App.Msg = Localizer.S("ClipboardEmpty");
                 break;
 
             case "A-R": await ReplicateAsync(); break;

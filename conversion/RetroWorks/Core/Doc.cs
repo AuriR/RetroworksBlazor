@@ -184,7 +184,7 @@ public abstract class Doc
     protected virtual Task HandleAsync(string k) => Task.CompletedTask;
 
     /// <summary>Help text for this doc type.</summary>
-    protected virtual string HelpText() => Localizer.Help("About");
+    protected virtual string HelpText() => Localizer.T("HelpAbout", App.Version);
 
     /// <summary>Prompt for an export file name (used by WP print, SS/DB CSV export).</summary>
     public async Task<string?> ExportPathAsync(string ext, string labelKey)

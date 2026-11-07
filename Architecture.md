@@ -269,7 +269,7 @@ flowchart TD
 
     MainMenu -->|Save Files| SaveAll["SaveDesktopFiles<br/>localStorage + browser download"]
     MainMenu -->|Remove Files| RemoveDoc["Delete from Desktop + localStorage"]
-    MainMenu -->|Other Activities| OtherActivities["Memory/Language/Theme/CRT/About"]
+    MainMenu -->|Other Activities| OtherActivities["Settings/Desktops/About"]
     MainMenu -->|Quit| Quit
 
     Quit --> Confirm{"Confirm quit?"}
@@ -288,7 +288,7 @@ The main menu is a stacked, folder‑style list. Each sub-menu opens on top of t
 | 2 | Work with a file on the Desktop (or pick one of up to 12 open) |
 | 3 | Save all changed files (to `localStorage` **and** download) |
 | 4 | Remove files from the Desktop (downloads first if dirty) |
-| 5 | Other Activities — memory size, language, theme, CRT emulation, about |
+| 5 | Other Activities — settings (memory/theme/CRT/language), manage Desktops, about |
 | 6 | Quit (power cycle) |
 
 ```mermaid
@@ -298,10 +298,8 @@ flowchart TD
     MM --> A3["Save Files<br/>→ localStorage + download"]
     MM --> A4["Remove Files<br/>→ delete from Desktop + localStorage"]
     MM --> A5["Other Activities"]
-    A5 --> Mem["Memory Size"]
-    A5 --> Lang["Choose Language (EN/HE)"]
-    A5 --> Theme["Theme (Green / Amber)"]
-    A5 --> CRT["CRT Emulation toggle"]
+    A5 --> Settings["Settings dialog<br/>memory/theme/CRT/language"]
+    A5 --> Desktops["Manage Desktops<br/>switch/new/rename/delete"]
     A5 --> About["About RetroWorks"]
     MM --> Q6["Quit → power cycle"]
 ```
@@ -310,11 +308,9 @@ flowchart TD
 
 | Choice | Action |
 |--------|--------|
-| 1 | Memory Size — change `MemKb`, which re-derives the Desktop limit and "K Avail." counter |
-| 2 | Choose Language — switch RESX culture (`en`/`he`) |
-| 3 | Theme — toggle phosphor colour (green default / amber) via a CSS `data-theme` attribute |
-| 4 | CRT Emulation — toggle scanline/screen-door overlay + rounded glass edges |
-| 5 | About RetroWorks — show help text page |
+| 1 | Settings — consolidated dialog: memory size (`MemKb`), theme (green/amber via CSS `data-theme`), CRT emulation overlay, language (`en`/`he`) |
+| 2 | Manage Desktops — switch to / create / rename / delete named Desktops (moved here from the Main Menu in v1.7) |
+| 3 | About RetroWorks — show help text page |
 
 ### Document run loop (`Doc.RunAsync`)
 
@@ -434,7 +430,11 @@ dotnet run --project "c:\dev\RetroWorks\conversion\RetroWorks\RetroWorks.csproj"
 
 The dev server (`Microsoft.AspNetCore.Components.WebAssembly.DevServer`) serves the WASM bundle and hot-reloads C#. Open the URL in a browser; the app boots through Splash → Desktop restore → Main Menu.
 
-> **Dev-server caching.** After a rebuild, existing tabs keep the old in-memory runtime and may hit stale-fingerprint 404s (e.g. `RetroWorks.styles.css`). Hard-reload with a cache-busting query param (`/?t=Date.now()`) or open a fresh tab to see real content.
+> **Dev-server caching & the "stuck at LOADING" trap.** After a rebuild, existing tabs keep the old in-memory runtime and may hit stale-fingerprint 404s (e.g. `RetroWorks.styles.css`). A cache-busting hard-reload (`/?t=Date.now()`) fixes *browser-side* staleness only.
+>
+> **Server-side fingerprint mismatch** is a different, nastier case: if you run an external `dotnet build` while `dotnet run` is already serving, the rebuild regenerates the static-web-asset content hashes (filenames like `_framework/dotnet.<hash>.js`, `RetroWorks.styles.css`). The running server then serves HTML that references old fingerprints which no longer exist on disk → 404 for the WASM runtime → Blazor never boots → the page is stuck forever on the static **LOADING** prompt (no crash, no error banner — just silence). A browser reload cannot fix this because the mismatch lives in the server's asset map.
+>
+> **Fix:** stop the dev server (`Ctrl+C`) and re-run `dotnet run --project …` so it performs one clean build with consistent fingerprints. **Prevention:** never run a separate `dotnet build` while `dotnet run` is active — let `dotnet run`'s own file-watcher handle rebuilds.
 
 ### Run (published)
 
@@ -511,5 +511,6 @@ Consequently, several areas that a typical ASP.NET/.NET architecture doc would c
 | 1.1     | 2026-10-27 | Copilot SDK   | Restored the Component & File Map diagram (lost in earlier edits) and hardened all mermaid diagrams against parse errors (removed HTML entities, unquoted parenthesized subgraph titles, and pipe-delimited edge labels). Now exactly 5 clean diagrams. |
 | 1.5     | 2026-11-02 | Copilot SDK   | App v1.5: splash screen now offers "Start RetroWorks" / "What's New"; spell-check dictionary expanded to ~5,000 words; formula engine gained string/date/lookup functions and mixed-type (number-or-text) values; spreadsheet column insert/delete added; unexpected-exception safety net creates an "Error Log" document on the Desktop instead of freezing. |
 | 1.6     | 2026-11-03 | Copilot SDK   | App v1.6: Word Processor formatting — real tab stops (8 columns), per-paragraph left/right/hanging indents (Alt‑I/Alt‑O/Alt‑H) with a ruler marker, and header/footer with page numbers (Alt‑Shift‑H/F) shown on screen (`Pg N`) and in paginated print export. PDF printing (Alt‑Shift‑P) via `PrinterEmulatorPdfService` + JS pdf-lib/fontkit with the bundled ImgWriter NLQ TrueType font (OTF→TTF conversion to work around a CFF Subrs parsing bug). Data Base — per-field lookup lists offered as a numbered menu when editing (Alt‑L), conditional highlight rules that render matching records in reverse video (Alt‑R), and report formats: aligned table report with column selection plus mailing-label report, both exported to `.txt` (Alt‑G). All new state serializes to the file JSON; EN + HE strings added. |
+| 1.7     | 2026-11-07 | Copilot SDK   | Splash screen now shows localized credit lines (Blazor version by Auri Rahimzadeh, original Python version by @udiweinstein). "Manage Desktops" moved from the Main Menu into Other Activities (now: Settings / Manage Desktops / About); main menu renumbered accordingly. |
 
 > **Maintenance rule.** This document is a living artifact: it must be updated whenever non‑trivial changes are made to the application (new document type, new persistence mechanism, significant refactor of flows, version bumps, etc.). If you change this code and do not update `Architecture.md`, revert the change.

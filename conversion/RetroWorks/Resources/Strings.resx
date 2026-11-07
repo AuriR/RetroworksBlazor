@@ -15,6 +15,8 @@
   <data name="NeedsMinSize" xml:space="preserve"><value>RetroWorks needs at least {0}x{1}.</value></data>
   <data name="WindowTooSmall" xml:space="preserve"><value>This window is {0}x{1}. Please make it larger.</value></data>
   <data name="Disk" xml:space="preserve"><value>Disk: {0}</value></data>
+  <data name="DiskOnly" xml:space="preserve"><value>Disk:</value></data>
+  <data name="DesktopLabel" xml:space="preserve"><value>Desktop: {0}</value></data>
   <data name="AltKForHelp" xml:space="preserve"><value>Alt-K for Help</value></data>
   <data name="KAavail" xml:space="preserve"><value>{0}K Avail.</value></data>
   <data name="TypeNumberOrArrows" xml:space="preserve"><value>Type number, or use arrows, then press Return</value></data>
@@ -47,6 +49,8 @@
   <data name="NotAffiliated" xml:space="preserve"><value>Not affiliated with or endorsed by Apple Inc.</value></data>
   <data name="TodaysDate" xml:space="preserve"><value>Today's date: {0}</value></data>
   <data name="AltTakesPlaceOfApple" xml:space="preserve"><value>Alt takes the place of the Open-Apple key.</value></data>
+  <data name="CreditBlazor" xml:space="preserve"><value>Blazor version by Auri Rahimzadeh</value></data>
+  <data name="CreditPython" xml:space="preserve"><value>Original Python version by @udiweinstein</value></data>
   <data name="PressReturnToContinue" xml:space="preserve"><value>Press Return to continue</value></data>
   <data name="AboutRetroWorks" xml:space="preserve"><value>About RetroWorks</value></data>
   <data name="StartRetroWorks" xml:space="preserve"><value>1. Start RetroWorks</value></data>
@@ -60,6 +64,7 @@
   <data name="WorkWithFileOnDesktop" xml:space="preserve"><value>Work with one of the files on the Desktop</value></data>
   <data name="SaveDesktopFiles" xml:space="preserve"><value>Save Desktop files (download)</value></data>
   <data name="RemoveFilesFromDesktop" xml:space="preserve"><value>Remove files from the Desktop</value></data>
+  <data name="ManageDesktops" xml:space="preserve"><value>Manage Desktops</value></data>
   <data name="OtherActivities" xml:space="preserve"><value>Other Activities</value></data>
   <data name="Quit" xml:space="preserve"><value>Quit</value></data>
   <data name="ReallyQuit" xml:space="preserve"><value>Do you really want to quit?</value></data>
@@ -120,6 +125,13 @@
   <data name="DesktopMemoryFull" xml:space="preserve"><value>The Desktop memory is full. Remove a file or add memory.</value></data>
   <data name="ChooseLanguageForMenus" xml:space="preserve"><value>Choose the language for menus and messages:</value></data>
   <data name="LanguageName" xml:space="preserve"><value>Language: {0}</value></data>
+
+  <!-- Settings dialog (v1.7) -->
+  <data name="Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="ArrowsCycleEnterSave" xml:space="preserve"><value>Arrows cycle, Enter saves</value></data>
+  <data name="On" xml:space="preserve"><value>On</value></data>
+  <data name="Off" xml:space="preserve"><value>Off</value></data>
+  <data name="SettingsSaved" xml:space="preserve"><value>Settings saved.</value></data>
 
   <!-- Data Base categories screen -->
   <data name="ChangeNameCategory" xml:space="preserve"><value>CHANGE NAME/CATEGORY</value></data>
@@ -260,6 +272,17 @@
   <data name="RuleValue" xml:space="preserve"><value>Value to match: </value></data>
   <data name="RuleAdded" xml:space="preserve"><value>Rule added.</value></data>
   <data name="RulesCleared" xml:space="preserve"><value>All rules cleared.</value></data>
+  <data name="NewDesktop" xml:space="preserve"><value>New Desktop...</value></data>
+  <data name="RenameDesktop" xml:space="preserve"><value>Rename a Desktop</value></data>
+  <data name="DeleteDesktop" xml:space="preserve"><value>Delete a Desktop</value></data>
+  <data name="RenameWhich" xml:space="preserve"><value>Which Desktop to rename?</value></data>
+  <data name="DeleteWhich" xml:space="preserve"><value>Which Desktop to delete?</value></data>
+  <data name="TypeNewName" xml:space="preserve"><value>Type the new name:</value></data>
+  <data name="ConfirmDeleteDesktop" xml:space="preserve"><value>Delete this Desktop and all its files?</value></data>
+  <data name="CannotDeleteLastDesktop" xml:space="preserve"><value>Cannot delete the last Desktop.</value></data>
+  <data name="DesktopCreated" xml:space="preserve"><value>Desktop "{0}" created.</value></data>
+  <data name="DesktopRenamed" xml:space="preserve"><value>Desktop renamed to "{0}".</value></data>
+  <data name="DesktopDeleted" xml:space="preserve"><value>Desktop "{0}" deleted.</value></data>
   <data name="RuleDeleted" xml:space="preserve"><value>Rule {0} deleted.</value></data>
 
   <!-- Data base: reports -->
@@ -273,7 +296,7 @@
   <data name="ReportSavedTo" xml:space="preserve"><value>Report saved to {0}</value></data>
 
   <!-- Help text -->
-  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   version 1.6
+  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   version {0}
 
 An integrated Word Processor, Data Base and Spreadsheet in the style of
 the 80-column, green-screen productivity software of the Apple ][ years.
@@ -292,7 +315,10 @@ whichever kind of file you are working on.
 
 The print font, ImgWriter NLQ, is licensed from John H. Isles under a
 Creative Commons Attribution license:
-https://fontstruct.com/fontstructions/show/473428</value></data>
+https://fontstruct.com/fontstructions/show/473428
+
+RetroWorks Blazor WASM: https://github.com/AuriR/RetroworksBlazor
+Original RetroWorks Python (MIT): https://github.com/udiweinstein/RetroWorks</value></data>
 
   <data name="HelpWP" xml:space="preserve"><value>WORD PROCESSOR COMMANDS          (Alt replaces the Open-Apple key)
 

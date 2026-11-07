@@ -15,6 +15,8 @@
   <data name="NeedsMinSize" xml:space="preserve"><value>RetroWorks צריכה חלון של {0}x{1} לפחות.</value></data>
   <data name="WindowTooSmall" xml:space="preserve"><value>החלון הנוכחי הוא {0}x{1}. נא להגדיל אותו.</value></data>
   <data name="Disk" xml:space="preserve"><value>דיסק: {0}</value></data>
+  <data name="DiskOnly" xml:space="preserve"><value>דיסק:</value></data>
+  <data name="DesktopLabel" xml:space="preserve"><value>שולחן עבודה: {0}</value></data>
   <data name="AltKForHelp" xml:space="preserve"><value>Alt-K לעזרה</value></data>
   <data name="KAavail" xml:space="preserve"><value>{0}K פנויים</value></data>
   <data name="TypeNumberOrArrows" xml:space="preserve"><value>הקלד מספר או השתמש בחצים, ואז לחץ Return</value></data>
@@ -47,6 +49,8 @@
   <data name="NotAffiliated" xml:space="preserve"><value>אינה קשורה ל-Apple Inc. ואינה מאושרת על ידה.</value></data>
   <data name="TodaysDate" xml:space="preserve"><value>התאריך היום: {0}</value></data>
   <data name="AltTakesPlaceOfApple" xml:space="preserve"><value>מקש Alt מחליף את מקש ה-Open-Apple.</value></data>
+  <data name="CreditBlazor" xml:space="preserve"><value>גרסת Blazor מאת Auri Rahimzadeh</value></data>
+  <data name="CreditPython" xml:space="preserve"><value>גרסת Python המקורית מאת @udiweinstein</value></data>
   <data name="PressReturnToContinue" xml:space="preserve"><value>לחץ Return להמשך</value></data>
   <data name="AboutRetroWorks" xml:space="preserve"><value>אודות RetroWorks</value></data>
   <data name="StartRetroWorks" xml:space="preserve"><value>1. התחל את RetroWorks</value></data>
@@ -60,6 +64,7 @@
   <data name="WorkWithFileOnDesktop" xml:space="preserve"><value>עבודה עם אחד הקבצים שעל שולחן העבודה</value></data>
   <data name="SaveDesktopFiles" xml:space="preserve"><value>שמירת הקבצים (הורדה)</value></data>
   <data name="RemoveFilesFromDesktop" xml:space="preserve"><value>הסרת קבצים משולחן העבודה</value></data>
+  <data name="ManageDesktops" xml:space="preserve"><value>ניהול שולחנות עבודה</value></data>
   <data name="OtherActivities" xml:space="preserve"><value>פעולות נוספות</value></data>
   <data name="Quit" xml:space="preserve"><value>יציאה</value></data>
   <data name="ReallyQuit" xml:space="preserve"><value>לצאת מהתוכנה?</value></data>
@@ -120,7 +125,12 @@
   <data name="DesktopMemoryFull" xml:space="preserve"><value>הזיכרון של שולחן העבודה מלא. הסר קובץ או הוסף זיכרון.</value></data>
   <data name="ChooseLanguageForMenus" xml:space="preserve"><value>בחר את שפת התפריטים וההודעות:</value></data>
   <data name="LanguageName" xml:space="preserve"><value>שפה: {0}</value></data>
-
+  <!-- Settings dialog (v1.7) -->
+  <data name="Settings" xml:space="preserve"><value>הגדרות</value></data>
+  <data name="ArrowsCycleEnterSave" xml:space="preserve"><value>חצים מעבירים, Enter שומר</value></data>
+  <data name="On" xml:space="preserve"><value>דלוק</value></data>
+  <data name="Off" xml:space="preserve"><value>כבוי</value></data>
+  <data name="SettingsSaved" xml:space="preserve"><value>ההגדרות נשמרו.</value></data>
   <!-- Data Base categories screen -->
   <data name="ChangeNameCategory" xml:space="preserve"><value>שינוי שם/קטגוריה</value></data>
   <data name="TypeCategoryNames" xml:space="preserve"><value>הקלד את שמות הקטגוריות (השדות), אחד בכל פעם.</value></data>
@@ -258,6 +268,17 @@
   <data name="RuleValue" xml:space="preserve"><value>ערך להתאמה: </value></data>
   <data name="RuleAdded" xml:space="preserve"><value>הכלל נוסף.</value></data>
   <data name="RulesCleared" xml:space="preserve"><value>כל הכללים נמחקו.</value></data>
+  <data name="NewDesktop" xml:space="preserve"><value>שולחן חדש...</value></data>
+  <data name="RenameDesktop" xml:space="preserve"><value>שינוי שם של שולחן</value></data>
+  <data name="DeleteDesktop" xml:space="preserve"><value>מחיקת שולחן</value></data>
+  <data name="RenameWhich" xml:space="preserve"><value>איזה שולחן לשנות את שמו?</value></data>
+  <data name="DeleteWhich" xml:space="preserve"><value>איזה שולחן למחוק?</value></data>
+  <data name="TypeNewName" xml:space="preserve"><value>הקלד את השם החדש:</value></data>
+  <data name="ConfirmDeleteDesktop" xml:space="preserve"><value>למחוק את השולחן הזה ואת כל הקבצים שלו?</value></data>
+  <data name="CannotDeleteLastDesktop" xml:space="preserve"><value>לא ניתן למחוק את השולחן האחרון.</value></data>
+  <data name="DesktopCreated" xml:space="preserve"><value>השולחן "{0}" נוצר.</value></data>
+  <data name="DesktopRenamed" xml:space="preserve"><value>השולחן שונה ל"{0}".</value></data>
+  <data name="DesktopDeleted" xml:space="preserve"><value>השולחן "{0}" נמחק.</value></data>
   <data name="RuleDeleted" xml:space="preserve"><value>כלל {0} נמחק.</value></data>
 
   <!-- מסד נתונים: דוחות -->
@@ -271,7 +292,7 @@
   <data name="ReportSavedTo" xml:space="preserve"><value>הדו"ח נשמר ב-{0}</value></data>
 
   <!-- Help text -->
-  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   גרסה 1.6
+  <data name="HelpAbout" xml:space="preserve"><value>RetroWorks ][   גרסה {0}
 
 מעבד תמלילים, מסד נתונים וגיליון אלקטרוני משולבים, בסגנון
 תוכנות העבודה של ה-Apple ][ : מסך ירוק ברוחב 80 עמודות.
@@ -294,7 +315,10 @@ Alt-K   עזרה עבור סוג הקובץ שעובדים עליו.
 
 גופן ההדפסה ImgWriter NLQ מורשה מ-John H. Isles תחת רישיון
 Creative Commons Attribution:
-https://fontstruct.com/fontstructions/show/473428</value></data>
+https://fontstruct.com/fontstructions/show/473428
+
+RetroWorks Blazor WASM: https://github.com/AuriR/RetroworksBlazor
+Original RetroWorks Python (MIT): https://github.com/udiweinstein/RetroWorks</value></data>
 
   <data name="HelpWP" xml:space="preserve"><value>פקודות מעבד התמלילים      (Alt מחליף את מקש ה-Open-Apple)
 

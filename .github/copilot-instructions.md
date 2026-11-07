@@ -20,6 +20,7 @@ dotnet run --project "c:\dev\RetroWorks\conversion\RetroWorks\RetroWorks.csproj"
 
 - **Standard is 0 warnings, 0 errors.** Never leave a build with warnings.
 - The user often has the app open in a browser tab and actively using it. C# rebuilds + server restarts disrupt their session — warn before restarting, or batch changes. CSS/JS-only changes need no rebuild (just refresh).
+- **Never run `dotnet build` while `dotnet run` is serving.** An external rebuild regenerates the static-web-asset content hashes (`_framework/dotnet.<hash>.js`, `RetroWorks.styles.css`), so the running server ends up referencing fingerprints that no longer exist on disk → 404 for the WASM runtime → the page hangs forever on the **LOADING** prompt (no crash, no error banner). A browser hard-reload does NOT fix this — the mismatch is server-side. Fix: `Ctrl+C` the dev server and re-run `dotnet run --project …`. Let `dotnet run`'s file-watcher do all rebuilding.
 
 ## Architecture (C# port)
 

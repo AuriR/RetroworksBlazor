@@ -258,27 +258,58 @@ export async function loadFile(accept) {
 
 // ---- localStorage persistence (RetroWorks "disk") -------------------------
 // Saved files live under one namespaced key so they survive refresh/restart.
+//
+// v1.7 structure: multiple named Desktops, each with its own file set.
+//   { desktops: [{ id, name, files: { "NAME.ext": json } }], currentId: "..." }
+// Legacy (v≤1.6) was a flat map of filename → json; readStore() migrates it
+// into a single "Desktop" entry so existing users keep their files.
 
 const LS_KEY = 'retroworks.files';
 
+function newDesktop(id, name) {
+    return { id: id, name: name, files: {} };
+}
+
+/** Read + migrate the store. Always returns the v1.7 shape. */
 function readStore() {
-    try {
-        const raw = localStorage.getItem(LS_KEY);
-        return raw ? JSON.parse(raw) : {};
-    } catch {
-        return {};   // corrupt store → start fresh rather than crash the app
+    let raw;
+    try { raw = localStorage.getItem(LS_KEY); } catch { raw = null; }
+    if (!raw) return { desktops: [newDesktop('d1', 'Desktop')], currentId: 'd1' };
+
+    let store;
+    try { store = JSON.parse(raw); } catch { return { desktops: [newDesktop('d1', 'Desktop')], currentId: 'd1' }; }
+
+    // Already v1.7 shape.
+    if (store && Array.isArray(store.desktops)) {
+        if (!store.currentId || !store.desktops.some(d => d.id === store.currentId))
+            store.currentId = store.desktops.length ? store.desktops[0].id : 'd1';
+        return store;
     }
+
+    // Legacy flat map → migrate into one "Desktop".
+    const files = (store && typeof store === 'object') ? store : {};
+    const migrated = { desktops: [newDesktop('d1', 'Desktop')], currentId: 'd1' };
+    for (const k of Object.keys(files)) migrated.desktops[0].files[k] = files[k];
+    writeStore(migrated);   // persist the migration immediately
+    return migrated;
 }
 
 function writeStore(store) {
     localStorage.setItem(LS_KEY, JSON.stringify(store));
 }
 
-/** Save a file's JSON content to localStorage. Returns true on success. */
-export function saveLocalFile(name, json) {
+/** Find a desktop by id (or null). */
+function findDesktop(store, id) {
+    return store.desktops.find(d => d.id === id) || null;
+}
+
+/** Save a file's JSON content to the given Desktop. Returns true on success. */
+export function saveLocalFile(desktopId, name, json) {
     try {
         const store = readStore();
-        store[name] = json;
+        const d = findDesktop(store, desktopId);
+        if (!d) return false;
+        d.files[name] = json;
         writeStore(store);
         return true;
     } catch (e) {
@@ -287,22 +318,126 @@ export function saveLocalFile(name, json) {
     }
 }
 
-/** Load a file's JSON content from localStorage, or null if absent. */
-export function loadLocalFile(name) {
+/** Load a file's JSON content from the given Desktop, or null if absent. */
+export function loadLocalFile(desktopId, name) {
     const store = readStore();
-    return Object.prototype.hasOwnProperty.call(store, name) ? store[name] : null;
+    const d = findDesktop(store, desktopId);
+    if (!d || !Object.prototype.hasOwnProperty.call(d.files, name)) return null;
+    return d.files[name];
 }
 
-/** List all saved file names (with extensions). */
-export function listLocalFiles() {
-    return Object.keys(readStore());
+/** List all saved file names (with extensions) in the given Desktop. */
+export function listLocalFiles(desktopId) {
+    const store = readStore();
+    const d = findDesktop(store, desktopId);
+    return d ? Object.keys(d.files) : [];
 }
 
-/** Delete a file from localStorage. Returns true if it existed. */
-export function deleteLocalFile(name) {
+/** Delete a file from the given Desktop. Returns true if it existed. */
+export function deleteLocalFile(desktopId, name) {
     const store = readStore();
-    if (!Object.prototype.hasOwnProperty.call(store, name)) return false;
-    delete store[name];
+    const d = findDesktop(store, desktopId);
+    if (!d || !Object.prototype.hasOwnProperty.call(d.files, name)) return false;
+    delete d.files[name];
     writeStore(store);
     return true;
+}
+
+// ---- Desktop management (v1.7) -------------------------------------------
+
+/** List all Desktops as [{id, name}] plus the current id. */
+export function listDesktops() {
+    const store = readStore();
+    return { desktops: store.desktops.map(d => ({ id: d.id, name: d.name })), currentId: store.currentId };
+}
+
+/** Create a new Desktop with the given name. Returns its id (or null on failure). */
+export function createDesktop(name) {
+    try {
+        const store = readStore();
+        const id = 'd' + Date.now().toString(36);
+        store.desktops.push(newDesktop(id, name));
+        writeStore(store);
+        return id;
+    } catch (e) {
+        console.error('[RetroWorks] createDesktop failed:', e);
+        return null;
+    }
+}
+
+/** Rename a Desktop. Returns true on success. */
+export function renameDesktop(id, name) {
+    try {
+        const store = readStore();
+        const d = findDesktop(store, id);
+        if (!d) return false;
+        d.name = name;
+        writeStore(store);
+        return true;
+    } catch (e) {
+        console.error('[RetroWorks] renameDesktop failed:', e);
+        return false;
+    }
+}
+
+/** Delete a Desktop and all its files. The last remaining Desktop cannot be deleted. */
+export function deleteDesktop(id) {
+    try {
+        const store = readStore();
+        if (store.desktops.length <= 1) return false;   // keep at least one
+        const idx = store.desktops.findIndex(d => d.id === id);
+        if (idx < 0) return false;
+        store.desktops.splice(idx, 1);
+        if (store.currentId === id) store.currentId = store.desktops[0].id;
+        writeStore(store);
+        return true;
+    } catch (e) {
+        console.error('[RetroWorks] deleteDesktop failed:', e);
+        return false;
+    }
+}
+
+/** Set which Desktop is current. Returns the new current id (or null). */
+export function setCurrentDesktop(id) {
+    try {
+        const store = readStore();
+        if (!findDesktop(store, id)) return null;
+        store.currentId = id;
+        writeStore(store);
+        return id;
+    } catch (e) {
+        console.error('[RetroWorks] setCurrentDesktop failed:', e);
+        return null;
+    }
+}
+
+// ---- Settings persistence (v1.7) ------------------------------------------
+const SETTINGS_KEY = 'retroworks.settings';
+
+/** Load saved settings. Returns {memKb, theme, crt, lang} with defaults if absent. */
+export function loadSettings() {
+    try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (!raw) return { memKb: 1024, theme: 'green', crt: false, lang: 'en' };
+        const s = JSON.parse(raw);
+        return {
+            memKb: typeof s.memKb === 'number' ? s.memKb : 1024,
+            theme: s.theme === 'amber' ? 'amber' : 'green',
+            crt: !!s.crt,
+            lang: s.lang === 'he' ? 'he' : 'en'
+        };
+    } catch {
+        return { memKb: 1024, theme: 'green', crt: false, lang: 'en' };
+    }
+}
+
+/** Save settings to localStorage. */
+export function saveSettings(memKb, theme, crt, lang) {
+    try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify({ memKb, theme, crt, lang }));
+        return true;
+    } catch (e) {
+        console.error('[RetroWorks] saveSettings failed:', e);
+        return false;
+    }
 }

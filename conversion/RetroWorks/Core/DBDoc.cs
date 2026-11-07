@@ -330,12 +330,16 @@ public sealed class DBDoc : Doc
                 break;
 
             case "A-C":
-                if (n > 0) { ClipDb = [.. Records[rows[_cur]]]; App.Msg = Localizer.S("RecordCopied"); }
+                if (n > 0)
+                {
+                    ClipDb = [.. Records[rows[_cur]]];
+                    App.ClipText = string.Join('\t', ClipDb);   // cross-module text bridge (v1.7)
+                    App.Msg = Localizer.S("RecordCopied");
+                }
                 break;
 
             case "A-V":
-                if (ClipDb is null) { App.Msg = Localizer.S("ClipboardEmpty"); }
-                else
+                if (ClipDb is not null)
                 {
                     int nf = Fields.Count;
                     var pasteRec = new List<string>(nf);
@@ -344,6 +348,25 @@ public sealed class DBDoc : Doc
                     InsertRecord(pasteRec);
                     App.Msg = Localizer.S("RecordPastedBelow");
                 }
+                else if (App.ClipText.Length > 0)
+                {
+                    // Cross-module paste: split the shared text into fields. Newlines become
+                    // separate records; tabs (or commas as a fallback) delimit fields within one.
+                    var lines = App.ClipText.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+                    foreach (var line in lines.Where(l => l.Trim().Length > 0))
+                    {
+                        string[] parts = line.Contains('\t')
+                            ? line.Split('\t')
+                            : line.Split(',');
+                        int nf2 = Fields.Count;
+                        var rec = new List<string>(nf2);
+                        for (int pi = 0; pi < nf2; pi++)
+                            rec.Add(pi < parts.Length ? Text.Clean(parts[pi]) : "");
+                        InsertRecord(rec);
+                    }
+                    App.Msg = Localizer.S("RecordPastedBelow");
+                }
+                else App.Msg = Localizer.S("ClipboardEmpty");
                 break;
 
             case "A-G": await ReportAsync(); break;
@@ -481,23 +504,24 @@ public sealed class DBDoc : Doc
     {
         while (true)
         {
+            // SelectAsync auto-numbers string items and returns the list index, so pass
+            // plain rule text (no manual prefix). Rules occupy 0..Count-1; the two actions
+            // follow immediately after.
             var labels = new List<object?>();
             for (int ri = 0; ri < Rules.Count; ri++)
-                labels.Add((ri + 1) + ". " + RuleText(Rules[ri]));
+                labels.Add(RuleText(Rules[ri]));
             if (Rules.Count == 0) labels.Add(Localizer.S("NoRulesYet"));
-            labels.Add("---");
             labels.Add(Localizer.S("AddRule"));
             labels.Add(Localizer.S("ClearAllRules"));
 
             int? sel = await App.SelectAsync([Localizer.S("HighlightRules")], labels, esc: "EscapeCancel");
             if (sel is null) return;
 
-            // Menu layout (0-based list indices): [rules… | "NoRulesYet"] + "---" + "Add rule" + "Clear all".
-            // When there are no rules the "NoRulesYet" placeholder occupies a slot, shifting the
-            // trailing actions down by one — so compute their positions from the separator.
-            int sepIdx = Rules.Count + (Rules.Count == 0 ? 1 : 0);   // position of "---"
-            int addIdx = sepIdx + 1;                                 // "Add rule"
-            int clearIdx = sepIdx + 2;                               // "Clear all rules"
+            // List layout: [rules… | "NoRulesYet"] + "Add rule" + "Clear all". The placeholder
+            // occupies a slot only when there are no rules, so the actions' indices depend on it.
+            int baseIdx = Rules.Count + (Rules.Count == 0 ? 1 : 0);   // index of "Add rule"
+            int addIdx = baseIdx;                                     // "Add rule"
+            int clearIdx = baseIdx + 1;                               // "Clear all rules"
 
             if (sel.Value == addIdx)
             {

@@ -14,6 +14,9 @@ public sealed class App
     public const int MaxDesktop = 12;
     public const int ProgramK = 72;
 
+    /// <summary>Single source of truth for the app version (splash + About screen).</summary>
+    public const string Version = "1.7";
+
     // Memory configurations
     public static readonly (string name, int kb)[] MemorySizes =
     [
@@ -44,6 +47,29 @@ public sealed class App
     /// <summary>CRT display emulation (scanlines, screen-door, rounded glass). Off by default.</summary>
     public bool CrtEmulation { get; set; }
 
+    // ---- Multiple Desktops (v1.7) ----
+    /// <summary>All named Desktops known to the app (persisted in localStorage).</summary>
+    public List<(string Id, string Name)> Desktops { get; private set; } = [( "d1", "Desktop")];
+
+    /// <summary>The id of the Desktop whose files are currently loaded into <see cref="Desktop"/>.</summary>
+    public string CurrentDesktopId { get; set; } = "d1";
+
+    /// <summary>Display name of the current Desktop (for the status bar).</summary>
+    public string CurrentDesktopName =>
+        Desktops.FirstOrDefault(d => d.Id == CurrentDesktopId).Name ?? "Desktop";
+
+    // ---- Cross-module clipboard (v1.7) ----
+    /// <summary>
+    /// Plain-text bridge shared by all three modules. Each module keeps its own native
+    /// clipboard (WP paragraphs, DB record, SS cell); when a paste finds the native
+    /// clipboard empty it falls back to this text so content can cross module boundaries
+    /// (e.g. copy WP lines → paste as DB records). Copy operations populate both.
+    /// </summary>
+    public string ClipText { get; set; } = "";
+
+    /// <summary>True if any clipboard (native or shared) holds content.</summary>
+    public bool AnyClipboard => ClipText.Length > 0;
+
     // ---- Key input (async) ----
     private readonly ConcurrentQueue<string> _keyQueue = new();
     private TaskCompletionSource<string>? _keyTcs;
@@ -59,11 +85,23 @@ public sealed class App
     public Func<string, List<List<string>>, Task>? PrintPdfFunc;
     public Func<string, Task<string?>>? LoadFileFunc;
 
-    // localStorage persistence ("the disk" that survives refresh/restart)
-    public Func<string, string, Task<bool>>? SaveLocalFileFunc;
-    public Func<string, Task<string?>>? LoadLocalFileFunc;
-    public Func<Task<List<string>>>? ListLocalFilesFunc;
-    public Func<string, Task<bool>>? DeleteLocalFileFunc;
+    // localStorage persistence ("the disk" that survives refresh/restart).
+    // v1.7: every call is scoped to a Desktop id (multiple named Desktops).
+    public Func<string, string, string, Task<bool>>? SaveLocalFileFunc;   // (desktopId, name, json)
+    public Func<string, string, Task<string?>>? LoadLocalFileFunc;        // (desktopId, name)
+    public Func<string, Task<List<string>>>? ListLocalFilesFunc;          // (desktopId)
+    public Func<string, string, Task<bool>>? DeleteLocalFileFunc;         // (desktopId, name)
+
+    // Desktop management (v1.7).
+    public Func<Task<(List<(string Id, string Name)> desktops, string currentId)>>? ListDesktopsFunc;
+    public Func<string, Task<string?>>? CreateDesktopFunc;                // (name) → new id
+    public Func<string, string, Task<bool>>? RenameDesktopFunc;           // (id, name)
+    public Func<string, Task<bool>>? DeleteDesktopFunc;                   // (id)
+    public Func<string, Task<string?>>? SetCurrentDesktopFunc;            // (id) → new current id
+
+    // Settings persistence (v1.7).
+    public Func<Task<(int memKb, string theme, bool crt, string lang)>>? LoadSettingsFunc;
+    public Func<int, string, bool, string, Task<bool>>? SaveSettingsFunc;  // (memKb, theme, crt, lang)
 
     /// <summary>Trigger a browser download of text content.</summary>
     public async Task DownloadFile(string fileName, string content)
@@ -83,23 +121,67 @@ public sealed class App
     public async Task<string?> LoadFileAsync(string accept) =>
         LoadFileFunc is not null ? await LoadFileFunc(accept) : null;
 
-    // ---- localStorage helpers ----
+    // ---- localStorage helpers (scoped to the current Desktop) ----
 
-    /// <summary>Write a file's JSON to the browser's localStorage. Returns true on success.</summary>
+    /// <summary>Write a file's JSON to the current Desktop. Returns true on success.</summary>
     public async Task<bool> SaveLocalFileAsync(string name, string json) =>
-        SaveLocalFileFunc is not null ? await SaveLocalFileFunc(name, json) : false;
+        SaveLocalFileFunc is not null ? await SaveLocalFileFunc(CurrentDesktopId, name, json) : false;
 
-    /// <summary>Read a file's JSON from localStorage. Returns null if absent.</summary>
+    /// <summary>Read a file's JSON from the current Desktop. Returns null if absent.</summary>
     public async Task<string?> LoadLocalFileAsync(string name) =>
-        LoadLocalFileFunc is not null ? await LoadLocalFileFunc(name) : null;
+        LoadLocalFileFunc is not null ? await LoadLocalFileFunc(CurrentDesktopId, name) : null;
 
-    /// <summary>List all file names stored in localStorage.</summary>
+    /// <summary>List all file names stored in the current Desktop.</summary>
     public async Task<List<string>> ListLocalFilesAsync() =>
-        ListLocalFilesFunc is not null ? await ListLocalFilesFunc() : [];
+        ListLocalFilesFunc is not null ? await ListLocalFilesFunc(CurrentDesktopId) : [];
 
-    /// <summary>Delete a file from localStorage. Returns true if it existed.</summary>
+    /// <summary>Delete a file from the current Desktop. Returns true if it existed.</summary>
     public async Task<bool> DeleteLocalFileAsync(string name) =>
-        DeleteLocalFileFunc is not null ? await DeleteLocalFileFunc(name) : false;
+        DeleteLocalFileFunc is not null ? await DeleteLocalFileFunc(CurrentDesktopId, name) : false;
+
+    // ---- Desktop management (v1.7) ----
+
+    /// <summary>Refresh the known Desktop list from localStorage.</summary>
+    public async Task RefreshDesktopsAsync()
+    {
+        if (ListDesktopsFunc is null) return;
+        var (desktops, currentId) = await ListDesktopsFunc();
+        Desktops = desktops;
+        if (!string.IsNullOrEmpty(currentId)) CurrentDesktopId = currentId;
+    }
+
+    /// <summary>Create a new named Desktop. Returns its id, or null on failure.</summary>
+    public async Task<string?> CreateDesktopAsync(string name) =>
+        CreateDesktopFunc is not null ? await CreateDesktopFunc(name) : null;
+
+    /// <summary>Rename a Desktop. Returns true on success.</summary>
+    public async Task<bool> RenameDesktopAsync(string id, string name) =>
+        RenameDesktopFunc is not null ? await RenameDesktopFunc(id, name) : false;
+
+    /// <summary>Delete a Desktop (and its files). The last one cannot be deleted.</summary>
+    public async Task<bool> DeleteDesktopAsync(string id) =>
+        DeleteDesktopFunc is not null ? await DeleteDesktopFunc(id) : false;
+
+    /// <summary>Switch to the given Desktop: save current, load the target's files.</summary>
+    public async Task SwitchDesktopAsync(string id)
+    {
+        if (id == CurrentDesktopId) return;
+
+        // Persist any dirty files on the outgoing Desktop first.
+        foreach (var d in Desktop.Where(d => d.Dirty))
+            await d.DoSaveAsync();
+
+        // Power off the current set and load the target Desktop's files.
+        Current = null;
+        Desktop.Clear();
+        if (SetCurrentDesktopFunc is not null)
+        {
+            var newId = await SetCurrentDesktopFunc(id);
+            if (newId is not null) CurrentDesktopId = newId;
+        }
+        await RefreshDesktopsAsync();
+        await RestoreDesktopFromLocalAsync();
+    }
 
     // ---- Screen buffer operations ----
 
@@ -278,8 +360,10 @@ public sealed class App
                 VAttrs[y, x] = A_N;
             }
 
-        // Header: disk name, center title, esc hint
-        string disk = Localizer.T("Disk", "Memory");
+        // Header: disk/desktop indicator. With a single desktop, just "Disk:"
+        // (original AppleWorks feel). With multiple, "Desktop: <name>" signals
+        // the multi-desktop feature is active.
+        string disk = Desktops.Count > 1 ? Localizer.T("DesktopLabel", CurrentDesktopName) : Localizer.S("DiskOnly");
         string center = path.Count > 0 ? Localizer.S(path[^1]).ToUpperInvariant() : "";
         int cx = (W - center.Length) / 2;
         int roomD = center.Length > 0 ? cx - 2 : W - (esc.Length + 3);
@@ -389,7 +473,7 @@ public sealed class App
             if (keyTok == Key.Escape) return null;
             if (keyTok == Key.Alt("K") || keyTok == Key.F1 || keyTok == "?")
             {
-                await ShowTextAsync(Localizer.S("AboutRetroWorks"), Localizer.Help("About").Split('\n'));
+                await ShowTextAsync(Localizer.S("AboutRetroWorks"), Localizer.T("HelpAbout", Version).Split('\n'));
                 continue;
             }
             if (n == 0) continue;
@@ -840,6 +924,10 @@ public sealed class App
 
             var d = new WPDoc(this, name);
             d.Paras = paras;
+            // NOTE: assigning Paras directly leaves IndL/IndR/Hang at their
+            // 1-element defaults — the doc self-heals on first Draw via
+            // FixDirs(), but keep Sty in sync here too so nothing indexes a
+            // stale list between creation and the first frame.
             d.DetectDirs();
             d.Sty = Enumerable.Repeat("", d.Paras.Count).ToList();
             d.Dirty = true;
@@ -955,72 +1043,91 @@ public sealed class App
         int sel = 0;
         while (true)
         {
-            var items = Spaced(["MemorySize", "ChooseLanguage", "Theme", "CrtEmulation", "AboutRetroWorks"]);
+            var items = Spaced(["Settings", "ManageDesktops", "AboutRetroWorks"]);
             int? i = await SelectAsync(P, items, sel);
             if (i is null) return;
             sel = i.Value;
 
             switch (i)
             {
-                case 0: await MemoryMenuAsync(P); break;
-                case 1: await LanguageMenuAsync(P); break;
-                case 2: await ThemeMenuAsync(P); break;
-                case 3:
-                    CrtEmulation = !CrtEmulation;
-                    Msg = Localizer.T("CrtEmulationState", CrtEmulation ? "on" : "off");
-                    break;
-                case 4: await ShowTextAsync(Localizer.S("AboutRetroWorks"), Localizer.Help("About").Split('\n')); break;
+                case 0: await SettingsAsync(); break;
+                case 1: await ManageDesktopsAsync(); break;
+                case 2: await ShowTextAsync(Localizer.S("AboutRetroWorks"), Localizer.T("HelpAbout", Version).Split('\n')); break;
             }
         }
     }
 
-    private async Task MemoryMenuAsync(List<string> path)
+    /// <summary>
+    /// Consolidated settings dialog (v1.7). Shows memory, theme, CRT, and language
+    /// on one screen; arrow keys navigate, Left/Right cycle values, Enter confirms.
+    /// </summary>
+    private async Task SettingsAsync()
     {
-        var sizes = MemorySizes.Select(m => m.kb).ToList();
-        var items = new List<object?> { ("h", Localizer.S("HowMuchMemory")), null };
-        items.AddRange(MemorySizes.Select(m =>
+        var P = new List<string> { "Main Menu", "Other Activities", "Settings" };
+        int sel = 0;
+        int memIdx = Array.FindIndex(MemorySizes, m => m.kb == MemKb);
+        if (memIdx < 0) memIdx = 2;   // default to 1 MB
+
+        while (true)
         {
-            string kb = Localizer.T("NKForDesktop", m.kb - ProgramK);
-            return $"{m.name,-22}{kb,-24}" + (m.kb == MemKb ? "*" : "");
-        }));
+            // Build the settings rows: label + current value.
+            string memVal = MemorySizes[memIdx].name;
+            string themeVal = Theme == "green" ? Localizer.S("GreenPhosphor") : Localizer.S("AmberPhosphor");
+            string crtVal = CrtEmulation ? Localizer.S("On") : Localizer.S("Off");
+            var langCodes = Localizer.Languages;
+            int langIdx = Array.FindIndex(langCodes, c => c.code == Localizer.Lang);
+            if (langIdx < 0) langIdx = 0;
+            string langVal = langCodes[langIdx].name;
 
-        int? i = await SelectAsync([.. path, "MemorySizeTitle"], items,
-            sizes.Contains(MemKb) ? sizes.IndexOf(MemKb) : 0);
-        if (i is null) return;
-        MemKb = sizes[i.Value];
-        Msg = Localizer.T("MemoryNameNAvail", MemorySizes[i.Value].name, Avail());
-    }
+            // Draw the settings screen.
+            var (L, Tr, B, R) = DrawStack(P, "EscapeCancel", "ArrowsCycleEnterSave");
+            int rowY = Tr + 3;
+            string[] labels = { Localizer.S("MemorySize"), Localizer.S("Theme"), Localizer.S("CrtEmulation"), Localizer.S("ChooseLanguage") };
+            string[] values = { memVal, themeVal, crtVal, langVal };
 
-    private async Task LanguageMenuAsync(List<string> path)
-    {
-        var codes = Localizer.Languages;
-        var items = new List<object?> { ("h", Localizer.S("ChooseLanguageForMenus")), null };
-        items.AddRange(codes.Select(c => $"{c.name,-20}" + (c.code == Localizer.Lang ? "  *" : "")));
+            for (int i = 0; i < 4; i++)
+            {
+                int y = rowY + i * 2;
+                if (y > B - 1) break;
+                string label = labels[i];
+                string val = values[i];
+                if (i == sel)
+                    Put(y, L + 5, " " + label.PadRight(20) + val + " ", A_R);
+                else
+                    Put(y, L + 6, label.PadRight(20) + val);
+            }
 
-        var langPath = new List<string>(path) { "Language" };
-        int? i = await SelectAsync(langPath, items,
-            codes.FirstOrDefault(c => c.code == Localizer.Lang).code is not null
-                ? codes.ToList().FindIndex(c => c.code == Localizer.Lang) : 0);
-        if (i is null) return;
-        Localizer.SetLanguage(codes[i.Value].code);
-        Msg = Localizer.T("LanguageName", codes[i.Value].name);
-    }
+            string k = await KeyAsync();
+            if (k == Key.Escape) return;
 
-    private async Task ThemeMenuAsync(List<string> path)
-    {
-        // Items are RESX keys — SelectAsync calls Localizer.S() on each, so the
-        // friendly name ("Green phosphor") is shown. The selected line gets
-        // reverse-video highlighting automatically; no asterisk needed.
-        var items = new List<object?>
-        {
-            ("h", Localizer.S("Theme")), null,
-            "GreenPhosphor",
-            "AmberPhosphor"
-        };
-        var themePath = new List<string>(path) { "Theme" };
-        int? i = await SelectAsync(themePath, items, Theme == "green" ? 0 : 1);
-        if (i is null) return;
-        Theme = i == 0 ? "green" : "amber";
+            if (k is Key.Up or Key.Down)
+            {
+                sel = (sel + (k == Key.Up ? 3 : 1)) % 4;
+                continue;
+            }
+
+            // Left/Right cycles the value of the selected setting.
+            int dir = k == Key.Left ? -1 : 1;
+            if (k is Key.Right or Key.Left)
+            {
+                switch (sel)
+                {
+                    case 0: memIdx = (memIdx + dir + MemorySizes.Length) % MemorySizes.Length; MemKb = MemorySizes[memIdx].kb; break;
+                    case 1: Theme = Theme == "green" ? "amber" : "green"; break;
+                    case 2: CrtEmulation = !CrtEmulation; break;
+                    case 3: langIdx = (langIdx + dir + langCodes.Length) % langCodes.Length; Localizer.SetLanguage(langCodes[langIdx].code); break;
+                }
+                continue;
+            }
+
+            // Enter saves and closes.
+            if (k == Key.Enter)
+            {
+                await SaveSettingsAsync();
+                Msg = Localizer.S("SettingsSaved");
+                return;
+            }
+        }
     }
 
     /// <summary>
@@ -1076,7 +1183,8 @@ public sealed class App
             Clear();
             int bw = 56;
             int x = (W - bw) / 2;
-            int y = Math.Max(1, (H - 16) / 2);
+            // Box starts at row 3 so the credit lines below fit within 24 rows.
+            int y = Math.Max(1, (H - 16) / 2 - 1);
 
             Put(y, x, "╔" + new string('═', bw - 2) + "╗", A_B);
             for (int j = 1; j < 6; j++)
@@ -1091,7 +1199,7 @@ public sealed class App
             string date = DateTime.Today.ToString(Localizer.Lang == "en" ? "dddd, dd MMMM yyyy" : "dd/MM/yyyy");
             var lines = new[]
             {
-                Localizer.T("Version", "1.6"),
+                Localizer.T("Version", Version),
                 Localizer.S("OriginalTribute"),
                 Localizer.S("NotAffiliated"),
                 "",
@@ -1099,11 +1207,14 @@ public sealed class App
                 "",
                 Localizer.S("AltTakesPlaceOfApple"),
                 "",
+                Localizer.S("CreditBlazor"),
+                Localizer.S("CreditPython"),
+                "",
                 Localizer.S("StartRetroWorks"),
                 Localizer.S("WhatsNew"),
             };
             for (int j = 0; j < lines.Length; j++)
-                Put(y + 8 + j, (W - lines[j].Length) / 2, lines[j],
+                Put(y + 7 + j, (W - lines[j].Length) / 2, lines[j],
                     j >= lines.Length - 2 ? A_B : A_N);
 
             string k = await KeyAsync();
@@ -1111,7 +1222,19 @@ public sealed class App
             if (k == "2")
             {
                 // Show What's New screen
-                string whatsnew = @"Version 1.6 - Current Release
+                string whatsnew = @"Version 1.7 - Current Release
+
+- Multiple Desktops: keep separate file sets for different
+  projects (Other Activities > Manage Desktops). Switch,
+  create, rename, or delete named Desktops; each is saved
+  to disk.
+- Cross-module clipboard: copy in one module and paste in
+  another (WP text -> DB records / SS cells, and back).
+- Settings dialog (Other Activities > Settings): memory,
+  theme, CRT emulation, and language on one screen. All
+  settings persist across sessions.
+
+Version 1.6 - Previous Release
 
 Word Processor:
 - Tab stops (8 columns) and per-paragraph indents
@@ -1129,7 +1252,7 @@ Data Base:
 - Reports (Alt-G): aligned table report (pick columns) or
   mailing-label report, saved to .txt
 
-Version 1.5 - Previous Release
+Version 1.5 - Earlier Release
 
 - Expanded spell check dictionary (5,000+ words)
 - Added spreadsheet functions: @Left, @Right, @Mid, @Len,
@@ -1138,7 +1261,7 @@ Version 1.5 - Previous Release
 - Column insert/delete in spreadsheets
 - Splash screen now shows What's New option
 
-Version 1.3 - Earlier Release
+Version 1.3 - First C# Port
 - Initial C# port from Python reference implementation
 - Word processor with spell check and thesaurus
 - Database with sort, find, and report features
@@ -1149,9 +1272,32 @@ Version 1.3 - Earlier Release
         }
     }
 
+    /// <summary>Load persisted settings (memory, theme, CRT, language) from localStorage.</summary>
+    private async Task LoadSettingsAsync()
+    {
+        if (LoadSettingsFunc is null) return;
+        try
+        {
+            var (memKb, theme, crt, lang) = await LoadSettingsFunc();
+            MemKb = memKb;
+            Theme = theme;
+            CrtEmulation = crt;
+            Localizer.SetLanguage(lang);
+        }
+        catch { /* defaults are fine */ }
+    }
+
+    /// <summary>Persist current settings to localStorage.</summary>
+    private async Task SaveSettingsAsync()
+    {
+        if (SaveSettingsFunc is not null)
+            await SaveSettingsFunc(MemKb, Theme, CrtEmulation, Localizer.Lang);
+    }
+
     /// <summary>Entry point: splash, restore saved files, then main menu.</summary>
     public async Task RunAsync()
     {
+        await LoadSettingsAsync();
         await SplashAsync();
         await RestoreDesktopFromLocalAsync();
         await MainMenuAsync();
@@ -1222,9 +1368,93 @@ Version 1.3 - Earlier Release
         }
     }
 
+    /// <summary>Manage named Desktops: switch, new, rename, delete (v1.7).</summary>
+    private async Task ManageDesktopsAsync()
+    {
+        await RefreshDesktopsAsync();
+
+        while (true)
+        {
+            // SelectAsync auto-numbers string items and returns the list index, so we
+            // pass plain names (no manual prefix). Desktops occupy 0..Count-1; the three
+            // actions follow immediately after.
+            var labels = new List<object?>();
+            for (int i = 0; i < Desktops.Count; i++)
+                labels.Add(Desktops[i].Name + (Desktops[i].Id == CurrentDesktopId ? "  *" : ""));
+            labels.Add(Localizer.S("NewDesktop"));
+            labels.Add(Localizer.S("RenameDesktop"));
+            labels.Add(Localizer.S("DeleteDesktop"));
+
+            int? sel = await SelectAsync([Localizer.S("ManageDesktops")], labels, esc: "EscapeCancel");
+            if (sel is null) return;
+
+            int n = Desktops.Count;
+            if (sel.Value >= 0 && sel.Value < n)
+            {
+                // Switch to that Desktop.
+                var target = Desktops[sel.Value];
+                if (target.Id != CurrentDesktopId)
+                    await SwitchDesktopAsync(target.Id);
+                return;
+            }
+
+            int action = sel.Value - n;   // 0=New, 1=Rename, 2=Delete
+            if (action == 0)
+            {
+                string? name = await BoxPromptAsync([Localizer.S("ManageDesktops"), "NewDesktop"], "TypeNameForNewFile", maxLen: 20);
+                if (name is null) continue;
+                name = Text.Clean(name).Trim();
+                if (name.Length == 0) continue;
+                var id = await CreateDesktopAsync(name);
+                if (id is not null)
+                {
+                    Msg = Localizer.T("DesktopCreated", name);
+                    await SwitchDesktopAsync(id);   // jump to the fresh Desktop
+                }
+            }
+            else if (action == 1)
+            {
+                var pick = await SelectAsync([Localizer.S("RenameWhich")],
+                    Desktops.Select(d => d.Name).Cast<object?>().ToList(), esc: "EscapeCancel");
+                if (pick is null) continue;
+                string? name = await BoxPromptAsync([Localizer.S("ManageDesktops"), "NewDesktop"], "TypeNewName", maxLen: 20);
+                if (name is null) continue;
+                name = Text.Clean(name).Trim();
+                if (name.Length == 0) continue;
+                if (await RenameDesktopAsync(Desktops[pick.Value].Id, name))
+                {
+                    // Refresh the in-memory list so the menu and status bar show
+                    // the new name immediately (localStorage was already updated).
+                    await RefreshDesktopsAsync();
+                    Msg = Localizer.T("DesktopRenamed", name);
+                }
+            }
+            else if (action == 2)
+            {
+                if (Desktops.Count <= 1) { Msg = Localizer.S("CannotDeleteLastDesktop"); continue; }
+                var pick = await SelectAsync([Localizer.S("DeleteWhich")],
+                    Desktops.Select(d => d.Name).Cast<object?>().ToList(), esc: "EscapeCancel");
+                if (pick is null) continue;
+                var target = Desktops[pick.Value];
+                bool? ok = await YesNoAsync("ConfirmDeleteDesktop", false);
+                if (ok != true) continue;
+                // If deleting the current one, switch to another first.
+                if (target.Id == CurrentDesktopId && Desktops.Count > 1)
+                    await SwitchDesktopAsync(Desktops.First(d => d.Id != target.Id).Id);
+                if (await DeleteDesktopAsync(target.Id))
+                {
+                    Msg = Localizer.T("DesktopDeleted", target.Name);
+                    await RefreshDesktopsAsync();
+                }
+            }
+        }
+    }
+
     /// <summary>Restore previously saved files from localStorage onto the Desktop.</summary>
     private async Task RestoreDesktopFromLocalAsync()
     {
+        await RefreshDesktopsAsync();
+
         List<string> names;
         try { names = await ListLocalFilesAsync(); }
         catch { return; }   // interop not ready — start with an empty desktop

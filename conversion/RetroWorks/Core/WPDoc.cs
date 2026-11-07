@@ -43,6 +43,19 @@ public sealed class WPDoc : Doc
         int n = Paras.Count;
         while (Dirs.Count < n) Dirs.Add(DefaultDir());
         Dirs = Dirs.Take(n).ToList();
+        NormalizeLists();
+    }
+
+    /// <summary>
+    /// Ensure every per-paragraph list matches Paras.Count. This is the single
+    /// self-healing point: any code path that changes Paras without resizing the
+    /// formatting lists (Enter split, Backspace/Delete merge, Cut, programmatic
+    /// creation such as Error Log documents) cannot crash Layout()/Draw() —
+    /// they are normalized before anything indexes into them.
+    /// </summary>
+    private void NormalizeLists()
+    {
+        int n = Paras.Count;
         while (Sty.Count < n) Sty.Add("");
         Sty = Sty.Take(n).ToList();
         while (IndL.Count < n) IndL.Add(0);
@@ -121,6 +134,8 @@ public sealed class WPDoc : Doc
         _header = d.TryGetProperty("header", out var he) ? (he.GetString() ?? "") : "";
         _footer = d.TryGetProperty("footer", out var fe) ? (fe.GetString() ?? "") : "";
 
+        // Self-heal on load: a saved file (or any doc built programmatically)
+        // must have all per-paragraph lists sized to Paras before first Draw.
         FixDirs();
     }
 
@@ -179,14 +194,19 @@ public sealed class WPDoc : Doc
 
     public override void Draw()
     {
+        // Ensure per-paragraph lists (IndL/IndR/Hang/Sty/Dirs) match Paras.Count
+        // BEFORE Layout() indexes into them. Several edit paths (Enter, Backspace
+        // merge, Delete merge, Cut) change Paras without resizing these lists;
+        // calling FixDirs here is the single safety point that prevents
+        // IndexOutOfRange on the next frame.
+        FixDirs();
+
         var (H, W, ww, x0) = Geometry();
         var rows = Layout(ww);
         int cr = Crow(rows);
         int vh = H - 4;
         _top = Math.Min(_top, cr);
         if (cr >= _top + vh) _top = cr - vh + 1;
-
-        FixDirs();
         int col = _ci - rows[cr].s;
         int words = Paras.Sum(p => p.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
         bool rtl = Dirs[_pi] == 'R';
@@ -450,6 +470,7 @@ public sealed class WPDoc : Doc
 
             case "A-X":
                 ClipWp = [p]; ClipWpDirs = [Dirs[_pi]]; ClipWpSty = [st];
+                App.ClipText = p;   // cross-module text bridge (v1.7)
                 if (Paras.Count > 1) { Paras.RemoveAt(_pi); Dirs.RemoveAt(_pi); Sty.RemoveAt(_pi); _pi = Math.Min(_pi, Paras.Count - 1); }
                 else { Paras = [""]; Sty = [""]; }
                 _ci = 0; Dirty = true;
@@ -458,12 +479,12 @@ public sealed class WPDoc : Doc
 
             case "A-C":
                 ClipWp = [p]; ClipWpDirs = [Dirs[_pi]]; ClipWpSty = [st];
+                App.ClipText = p;   // cross-module text bridge (v1.7)
                 App.Msg = Localizer.S("ParagraphCopiedToClipboard");
                 break;
 
             case "A-V":
-                if (ClipWp.Count == 0) { App.Msg = Localizer.S("ClipboardEmpty"); }
-                else
+                if (ClipWp.Count > 0)
                 {
                     Paras.InsertRange(_pi, ClipWp);
                     Dirs.InsertRange(_pi, ClipWpDirs.Take(ClipWp.Count));
@@ -473,6 +494,19 @@ public sealed class WPDoc : Doc
                     Dirty = true;
                     App.Msg = Localizer.S("PastedAboveCursor");
                 }
+                else if (App.ClipText.Length > 0)
+                {
+                    // Cross-module paste: insert the shared text as new paragraphs.
+                    var lines = App.ClipText.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+                    Paras.InsertRange(_pi, lines);
+                    Dirs.InsertRange(_pi, Enumerable.Repeat('L', lines.Length));
+                    Sty.InsertRange(_pi, Enumerable.Repeat("", lines.Length));
+                    FixDirs();
+                    _pi += lines.Length;
+                    Dirty = true;
+                    App.Msg = Localizer.S("PastedAboveCursor");
+                }
+                else App.Msg = Localizer.S("ClipboardEmpty");
                 break;
 
             case "A-B":
