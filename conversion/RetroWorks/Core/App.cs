@@ -15,7 +15,7 @@ public sealed class App
     public const int ProgramK = 72;
 
     /// <summary>Single source of truth for the app version (splash + About screen).</summary>
-    public const string Version = "1.7";
+    public const string Version = "1.8";
 
     // Memory configurations
     public static readonly (string name, int kb)[] MemorySizes =
@@ -91,6 +91,10 @@ public sealed class App
     public Func<string, string, Task<string?>>? LoadLocalFileFunc;        // (desktopId, name)
     public Func<string, Task<List<string>>>? ListLocalFilesFunc;          // (desktopId)
     public Func<string, string, Task<bool>>? DeleteLocalFileFunc;         // (desktopId, name)
+
+    // Custom spell-check dictionary (global, not scoped to a Desktop).
+    public Func<string, Task<bool>>? SaveCustomDictFunc;   // (json)
+    public Func<Task<string?>>? LoadCustomDictFunc;        // → json
 
     // Desktop management (v1.7).
     public Func<Task<(List<(string Id, string Name)> desktops, string currentId)>>? ListDesktopsFunc;
@@ -1043,7 +1047,7 @@ public sealed class App
         int sel = 0;
         while (true)
         {
-            var items = Spaced(["Settings", "ManageDesktops", "AboutRetroWorks"]);
+            var items = Spaced(["Settings", "ManageDesktops", "CustomDictionary", "AboutRetroWorks"]);
             int? i = await SelectAsync(P, items, sel);
             if (i is null) return;
             sel = i.Value;
@@ -1052,7 +1056,8 @@ public sealed class App
             {
                 case 0: await SettingsAsync(); break;
                 case 1: await ManageDesktopsAsync(); break;
-                case 2: await ShowTextAsync(Localizer.S("AboutRetroWorks"), Localizer.T("HelpAbout", Version).Split('\n')); break;
+                case 2: await CustomDictMenuAsync(); break;
+                case 3: await ShowTextAsync(Localizer.S("AboutRetroWorks"), Localizer.T("HelpAbout", Version).Split('\n')); break;
             }
         }
     }
@@ -1222,7 +1227,19 @@ public sealed class App
             if (k == "2")
             {
                 // Show What's New screen
-                string whatsnew = @"Version 1.7 - Current Release
+                string whatsnew = @"Version 1.8 - Current Release
+
+- Custom Dictionary: spell check now has a [D]ict key to
+  add words permanently (Other Activities > Custom
+  Dictionary for Export/Import .txt, deduplicated, max
+  128 KB). Persists in your browser across sessions.
+- Splash screen shows credit lines; About screen lists
+  both GitHub repos. Version number is a single constant
+  shared by splash and About (always in sync).
+- Manage Desktops moved from Main Menu to Other Activities
+  for a cleaner top-level menu.
+
+Version 1.7 - Previous Release
 
 - Multiple Desktops: keep separate file sets for different
   projects (Other Activities > Manage Desktops). Switch,
@@ -1234,7 +1251,7 @@ public sealed class App
   theme, CRT emulation, and language on one screen. All
   settings persist across sessions.
 
-Version 1.6 - Previous Release
+Version 1.6 - Earlier Release
 
 Word Processor:
 - Tab stops (8 columns) and per-paragraph indents
@@ -1252,7 +1269,7 @@ Data Base:
 - Reports (Alt-G): aligned table report (pick columns) or
   mailing-label report, saved to .txt
 
-Version 1.5 - Earlier Release
+Version 1.5 - Older Release
 
 - Expanded spell check dictionary (5,000+ words)
 - Added spreadsheet functions: @Left, @Right, @Mid, @Len,
@@ -1294,10 +1311,15 @@ Version 1.3 - First C# Port
             await SaveSettingsFunc(MemKb, Theme, CrtEmulation, Localizer.Lang);
     }
 
+    /// <summary>Singleton reference for static helpers (SpellCheck etc.) to reach interop funcs.</summary>
+    public static App? Instance;
+
     /// <summary>Entry point: splash, restore saved files, then main menu.</summary>
     public async Task RunAsync()
     {
+        Instance = this;
         await LoadSettingsAsync();
+        await SpellCheck.LoadCustomDictAsync();
         await SplashAsync();
         await RestoreDesktopFromLocalAsync();
         await MainMenuAsync();
@@ -1364,6 +1386,37 @@ Version 1.3 - First C# Port
                     var quit = await QuitAsync();
                     if (quit is null) continue;          // cancelled — stay in the menu
                     return;                              // confirmed — MainMenuAsync powers off & cycles
+            }
+        }
+    }
+
+    /// <summary>Custom Dictionary sub-menu: Import / Export the user's word list.</summary>
+    private async Task CustomDictMenuAsync()
+    {
+        var P = new List<string> { "Main Menu", "Other Activities", Localizer.S("CustomDictionary") };
+        int sel = 0;
+        while (true)
+        {
+            var items = Spaced(["DictExport", "DictImport"]);
+            int? i = await SelectAsync(P, items, sel);
+            if (i is null) return;
+            sel = i.Value;
+
+            switch (i)
+            {
+                case 0:
+                    // Export: one word per line, sorted.
+                    var words = SpellCheck.CustomDict.OrderBy(w => w).ToArray();
+                    string content = string.Join('\n', words);
+                    await DownloadFile("custom-dictionary.txt", content);
+                    Msg = Localizer.T("DictExported", words.Length);
+                    break;
+                case 1:
+                    // Import: open file picker, parse, validate, merge.
+                    var text = await LoadFileAsync(".txt");
+                    if (text is null) return;   // cancelled
+                    Msg = await SpellCheck.ImportWordsAsync(text);
+                    break;
             }
         }
     }

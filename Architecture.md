@@ -109,10 +109,12 @@ RetroWorks has **no server and no database**. The browser's `localStorage` is th
 - All files are stored under a single namespaced key: **`retroworks.files`**.
 - Each entry maps a file name *with extension* (e.g. `"REPORT.rwp"`) to its JSON payload string.
 - The JS layer tolerates a corrupt store (returns `{}` instead of throwing) so the app never crashes on bad data — it simply starts fresh.
+- A **second, independent key** `retroworks.customdict` holds the user's custom spell-check dictionary as a JSON array of lowercase words. It is *global* (not scoped to any Desktop), loaded at startup and saved whenever a word is added (`[D]ict`) or imported.
 
 ```mermaid
 erDiagram
     localStorage ||--o{ "retroworks.files" : contains
+    localStorage ||--|| "retroworks.customdict" : contains
     "retroworks.files" ||--o{ entry : is-a-json-object
     entry {
         string name "e.g. REPORT.rwp (with extension)"
@@ -300,6 +302,7 @@ flowchart TD
     MM --> A5["Other Activities"]
     A5 --> Settings["Settings dialog<br/>memory/theme/CRT/language"]
     A5 --> Desktops["Manage Desktops<br/>switch/new/rename/delete"]
+    A5 --> Dict["Custom Dictionary<br/>Import / Export .txt"]
     A5 --> About["About RetroWorks"]
     MM --> Q6["Quit → power cycle"]
 ```
@@ -310,7 +313,8 @@ flowchart TD
 |--------|--------|
 | 1 | Settings — consolidated dialog: memory size (`MemKb`), theme (green/amber via CSS `data-theme`), CRT emulation overlay, language (`en`/`he`) |
 | 2 | Manage Desktops — switch to / create / rename / delete named Desktops (moved here from the Main Menu in v1.7) |
-| 3 | About RetroWorks — show help text page |
+| 3 | Custom Dictionary — sub-menu with **Export** (downloads `custom-dictionary.txt`, one word per line, sorted) and **Import** (file picker; words are lowercased, deduplicated, validated as simple letter words, capped at 128 KB, then merged into the dictionary and persisted) |
+| 4 | About RetroWorks — show help text page |
 
 ### Document run loop (`Doc.RunAsync`)
 
@@ -366,7 +370,8 @@ Any other single printable character passes through unchanged (so formulas like 
 | `mapKey(e)` | Maps a `KeyboardEvent` → RetroWorks token (or `null`). |
 | `downloadFile(fileName, content)` | Triggers a browser download via Blob/Object URL. |
 | `loadFile(accept)` | Opens the file picker; resolves with text or `null` on cancel/timeout. |
-| `saveLocalFile(name, json)` / `loadLocalFile(name)` / `listLocalFiles()` / `deleteLocalFile(name)` | CRUD over the `retroworks.files` localStorage namespace. |
+| `saveLocalFile(desktopId, name, json)` / `loadLocalFile(desktopId, name)` / `listLocalFiles(desktopId)` / `deleteLocalFile(desktopId, name)` | CRUD over the per-Desktop file set inside the `retroworks.files` localStorage namespace. |
+| `saveCustomDict(json)` / `loadCustomDict()` | Global (non-Desktop-scoped) custom spell-check dictionary under the separate `retroworks.customdict` key. |
 | `setTheme(theme, crt)` | Applies phosphor theme + CRT emulation to `<html>`. |
 | `printPdf(fileName, pages)` | Dynamically loads pdf-lib + fontkit (UMD, cached), embeds the bundled ImgWriter NLQ TTF font, renders paginated text as a US Letter PDF with monospace placement, and triggers a download. |
 | `reportError(msg)` | Surfaces an app-loop exception in a red banner at the bottom of the screen. |
@@ -511,6 +516,7 @@ Consequently, several areas that a typical ASP.NET/.NET architecture doc would c
 | 1.1     | 2026-10-27 | Copilot SDK   | Restored the Component & File Map diagram (lost in earlier edits) and hardened all mermaid diagrams against parse errors (removed HTML entities, unquoted parenthesized subgraph titles, and pipe-delimited edge labels). Now exactly 5 clean diagrams. |
 | 1.5     | 2026-11-02 | Copilot SDK   | App v1.5: splash screen now offers "Start RetroWorks" / "What's New"; spell-check dictionary expanded to ~5,000 words; formula engine gained string/date/lookup functions and mixed-type (number-or-text) values; spreadsheet column insert/delete added; unexpected-exception safety net creates an "Error Log" document on the Desktop instead of freezing. |
 | 1.6     | 2026-11-03 | Copilot SDK   | App v1.6: Word Processor formatting — real tab stops (8 columns), per-paragraph left/right/hanging indents (Alt‑I/Alt‑O/Alt‑H) with a ruler marker, and header/footer with page numbers (Alt‑Shift‑H/F) shown on screen (`Pg N`) and in paginated print export. PDF printing (Alt‑Shift‑P) via `PrinterEmulatorPdfService` + JS pdf-lib/fontkit with the bundled ImgWriter NLQ TrueType font (OTF→TTF conversion to work around a CFF Subrs parsing bug). Data Base — per-field lookup lists offered as a numbered menu when editing (Alt‑L), conditional highlight rules that render matching records in reverse video (Alt‑R), and report formats: aligned table report with column selection plus mailing-label report, both exported to `.txt` (Alt‑G). All new state serializes to the file JSON; EN + HE strings added. |
-| 1.7     | 2026-11-07 | Copilot SDK   | Splash screen now shows localized credit lines (Blazor version by Auri Rahimzadeh, original Python version by @udiweinstein). "Manage Desktops" moved from the Main Menu into Other Activities (now: Settings / Manage Desktops / About); main menu renumbered accordingly. |
+| 1.7     | 2026-11-07 | Copilot SDK   | Multiple Desktops; cross-module clipboard; Settings dialog. |
+| 1.8     | 2026-11-07 | Copilot SDK   | Custom Dictionary: `[D]ict` key in spell check adds words to a persistent per-browser dictionary (localStorage `retroworks.customdict`, global across Desktops); Other Activities → Custom Dictionary sub-menu for Export (`custom-dictionary.txt`) and Import (deduplicated, validated, 128 KB cap). Splash screen credit lines; About screen GitHub repo URLs. Version number unified via `App.Version` constant. Manage Desktops moved from Main Menu to Other Activities. |
 
 > **Maintenance rule.** This document is a living artifact: it must be updated whenever non‑trivial changes are made to the application (new document type, new persistence mechanism, significant refactor of flows, version bumps, etc.). If you change this code and do not update `Architecture.md`, revert the change.

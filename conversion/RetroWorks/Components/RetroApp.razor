@@ -65,6 +65,12 @@
         _app.SetCurrentDesktopFunc = async id =>
             await _jsModule.InvokeAsync<string?>("setCurrentDesktop", id);
 
+        // Custom spell-check dictionary (global, not per-Desktop).
+        _app.SaveCustomDictFunc = async json =>
+            await _jsModule.InvokeAsync<bool>("saveCustomDict", json);
+        _app.LoadCustomDictFunc = async () =>
+            await _jsModule.InvokeAsync<string?>("loadCustomDict");
+
         // Settings persistence (v1.7).
         _app.LoadSettingsFunc = async () =>
         {

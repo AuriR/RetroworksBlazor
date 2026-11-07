@@ -16,6 +16,9 @@ public static class SpellCheck
     /// <summary>English dictionary (~5,000 common words, lowercase) from a public-domain frequency list.</summary>
     public static readonly HashSet<string> Dict = BuildDict();
 
+    /// <summary>User's custom dictionary (persists in localStorage across sessions).</summary>
+    public static readonly HashSet<string> CustomDict = new(StringComparer.Ordinal);
+
     private static HashSet<string> BuildDict() => new(WordList.Split(' ', StringSplitOptions.RemoveEmptyEntries), StringComparer.Ordinal);
 
     // ~5,000 of the most common English words (lowercase), from a public-domain frequency list.
@@ -536,7 +539,68 @@ public static class SpellCheck
     public static bool IsKnown(string word)
     {
         if (word.Length <= 3 && word == word.ToUpperInvariant()) return true;   // OK, I, USA...
-        return Dict.Contains(word.ToLowerInvariant());
+        string w = word.ToLowerInvariant();
+        return Dict.Contains(w) || CustomDict.Contains(w);
+    }
+
+    /// <summary>Add a word to the custom dictionary and persist it.</summary>
+    public static async Task AddToCustomDictAsync(string word)
+    {
+        string w = word.ToLowerInvariant();
+        if (!CustomDict.Add(w)) return;
+        var json = System.Text.Json.JsonSerializer.Serialize(CustomDict.OrderBy(x => x).ToArray());
+        if (App.Instance?.SaveCustomDictFunc is not null)
+            await App.Instance.SaveCustomDictFunc(json);
+    }
+
+    /// <summary>Load the custom dictionary from localStorage (call at startup).</summary>
+    public static async Task LoadCustomDictAsync()
+    {
+        if (App.Instance?.LoadCustomDictFunc is null) return;
+        try
+        {
+            var json = await App.Instance.LoadCustomDictFunc();
+            if (json is null) return;
+            var words = System.Text.Json.JsonSerializer.Deserialize<string[]>(json);
+            if (words is null) return;
+            CustomDict.Clear();
+            foreach (var w in words) CustomDict.Add(w);
+        }
+        catch { /* corrupt or missing — start fresh */ }
+    }
+
+    /// <summary>Maximum size of the custom dictionary file (128 KB).</summary>
+    public const int MaxDictBytes = 128 * 1024;
+
+    /// <summary>
+    /// Parse imported text (one word per line), validate, and merge into CustomDict.
+    /// Returns a localized status message. Words are lowercased and deduplicated;
+    /// the file must be at most 128 KB.
+    /// </summary>
+    public static async Task<string> ImportWordsAsync(string text)
+    {
+        if (System.Text.Encoding.UTF8.GetByteCount(text) > MaxDictBytes)
+            return Localizer.S("DictTooLarge");
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        int added = 0;
+        foreach (var raw in text.Split('\n', '\r'))
+        {
+            string w = raw.Trim().ToLowerInvariant();
+            if (w.Length == 0) continue;
+            // Only accept simple letter words (with optional apostrophe).
+            if (!System.Text.RegularExpressions.Regex.IsMatch(w, @"^[a-z]+(?:'[a-z]+)?$")) continue;
+            if (seen.Add(w) && CustomDict.Add(w)) added++;
+        }
+
+        if (added == 0)
+            return Localizer.S("DictNoNewWords");
+
+        // Persist the updated dictionary.
+        var json = System.Text.Json.JsonSerializer.Serialize(CustomDict.OrderBy(x => x).ToArray());
+        if (App.Instance?.SaveCustomDictFunc is not null)
+            await App.Instance.SaveCustomDictFunc(json);
+        return Localizer.T("DictImported", added, CustomDict.Count);
     }
 
     /// <summary>Up to `max` dictionary suggestions within edit distance 2.</summary>

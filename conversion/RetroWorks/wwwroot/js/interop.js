@@ -343,6 +343,18 @@ export function deleteLocalFile(desktopId, name) {
     return true;
 }
 
+// ---- Custom spell-check dictionary (global, not per-Desktop) ---------------
+const LS_DICT_KEY = 'retroworks.customdict';
+
+export function saveCustomDict(json) {
+    try { localStorage.setItem(LS_DICT_KEY, json); return true; }
+    catch (e) { console.error('[RetroWorks] custom dict save failed:', e); return false; }
+}
+
+export function loadCustomDict() {
+    try { return localStorage.getItem(LS_DICT_KEY); } catch { return null; }
+}
+
 // ---- Desktop management (v1.7) -------------------------------------------
 
 /** List all Desktops as [{id, name}] plus the current id. */

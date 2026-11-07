@@ -37,9 +37,17 @@
   <data name="KindHelp" xml:space="preserve"><value>עזרה - {0}</value></data>
   <data name="ClipboardEmpty" xml:space="preserve"><value>הלוח ריק.</value></data>
   <data name="SpellPrompt" xml:space="preserve"><value>איות:</value></data>
-  <data name="SpellKeys" xml:space="preserve"><value>[A]קבל [R]החלף [I]התעלם [S]דילוג</value></data>
+  <data name="SpellKeys" xml:space="preserve"><value>[A]קבל [R]החלף [I]התעלם [D]מילון [S]דילוג</value></data>
+  <data name="SpellAddedToDict" xml:space="preserve"><value>"{0}" נוסף למילון המותאם.</value></data>
+  <data name="CustomDictionary" xml:space="preserve"><value>מילון מותאם</value></data>
+  <data name="DictExport" xml:space="preserve"><value>ייצוא מילון מותאם</value></data>
+  <data name="DictImport" xml:space="preserve"><value>ייבוא מילון מותאם</value></data>
+  <data name="DictExported" xml:space="preserve"><value>יוצאו {0} מילים ל-custom-dictionary.txt.</value></data>
+  <data name="DictImported" xml:space="preserve"><value>נייבאו {0} מילים חדשות. סה"כ: {1}.</value></data>
+  <data name="DictTooLarge" xml:space="preserve"><value>הקובץ גדול מדי (מקסימום 128 KB).</value></data>
+  <data name="DictNoNewWords" xml:space="preserve"><value>אין מילים חדשות לייבוא.</value></data>
   <data name="SpellReplaceWith" xml:space="preserve"><value>החלף {0} ב:</value></data>
-  <data name="SpellDone" xml:space="preserve"><value>בדיקת איות הושלמה: נבדקו {0} מילים, הוחלפו {1}.</value></data>
+  <data name="SpellDone" xml:space="preserve"><value>בדיקת איות הושלמה: נבדקו {0}, הוחלפו {1}, נוספו למילון {2}.</value></data>
   <data name="CouldNotWriteFile" xml:space="preserve"><value>לא ניתן לכתוב את הקובץ: {0}</value></data>
   <data name="ThanksForUsing" xml:space="preserve"><value>תודה שהשתמשת ב-RetroWorks ][.  הקבצים שלך בזיכרון.</value></data>
 
@@ -336,7 +344,8 @@ Alt-X / C     גזירה / העתקה של הפסקה
 Alt-V         הדבקה מעל הסמן
 Alt-F         חיפוש (שוב)
 Alt-R         החלפת הכול
-Alt-W         בדיקת איות: 1/2=בחירה A=קבל R=החלף I=התעלם S=דילוג
+Alt-W         בדיקת איות: 1/2=בחירה A=קבל R=החלף I=התעלם D=מילון S=דילוג
+                  (D מוסיף את המילה למילון המותאם באופן קבוע)
               (מילים באנגלית בלבד; טקסט בעברית אינו נבדק)
 Alt-L         כיוון הפסקה: ימין לשמאל / שמאל לימין
 Alt-B         הדגשה (Bold) פועלת / כבויה

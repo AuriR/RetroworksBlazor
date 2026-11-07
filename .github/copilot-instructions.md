@@ -32,7 +32,9 @@ dotnet run --project "c:\dev\RetroWorks\conversion\RetroWorks\RetroWorks.csproj"
 - Cursor: `SetCursor(y,x)` / `CursorAt` — AppleWorks-style blinking **underline** cursor.
 - File I/O hooks: `Func<string,string,Task>? DownloadFileFunc`, `Func<string,Task<string?>>? LoadFileFunc`.
 - **localStorage persistence** ("the disk"): `SaveLocalFileFunc` / `LoadLocalFileFunc` / `ListLocalFilesFunc` / `DeleteLocalFileFunc` + helper methods. All saved files live under one namespaced key `retroworks.files` in the browser's localStorage.
-- Flow: `RunAsync()` = Splash → **RestoreDesktopFromLocalAsync()** (auto-restores saved files onto the Desktop) → MainMenu; memory model: `MemKb` (default 1024), `ProgramK=72`, `Avail() => MemKb - ProgramK - desktop file sizes`.
+- **Custom spell-check dictionary** is a SEPARATE global key `retroworks.customdict` (NOT per-Desktop): `SaveCustomDictFunc` / `LoadCustomDictFunc` → JS `saveCustomDict` / `loadCustomDict`. Loaded at startup in `RunAsync()`; `SpellCheck.CustomDict` is checked by `IsKnown()`. Import cap: 128 KB, words validated as `^[a-z]+(?:'[a-z]+)?$`, deduplicated.
+- **Version number**: single source of truth is `App.Version` (const string). Splash and About both format from it — never hardcode a version in resx text; use the `{0}` placeholder + `Localizer.T("HelpAbout", App.Version)`.
+- Flow: `RunAsync()` = set `Instance` → LoadSettings → **SpellCheck.LoadCustomDictAsync()** → Splash → **RestoreDesktopFromLocalAsync()** (auto-restores saved files onto the Desktop) → MainMenu; memory model: `MemKb` (default 1024), `ProgramK=72`, `Avail() => MemKb - ProgramK - desktop file sizes`.
 - **Quit = power cycle**: `QuitAsync()` saves dirty files to localStorage, then the main loop clears the Desktop and re-runs Splash → RestoreDesktopFromLocalAsync. The app never dies — quitting is like switching a real machine off and on (saved files come back).
 
 ### Key tokens are **strings** (not enums)
@@ -43,6 +45,8 @@ dotnet run --project "c:\dev\RetroWorks\conversion\RetroWorks\RetroWorks.csproj"
 - `Doc.RunAsync` loop: `Draw()` → `KeyAsync()` → Escape→"MENU", Alt-Q rename, **Alt-S save to disk (localStorage)**, **Alt-Shift-S (`"AS-S"`) download file**, Alt-K/F1 help, else `HandleAsync(k)`.
 - **Save vs. download:** `DoSaveAsync()` writes to localStorage only (no browser download); `DoDownloadAsync()` triggers a browser download. The main-menu "Save Desktop files" does BOTH (localStorage + download) so the on-disk copy stays in sync. Removing a file deletes it from localStorage too.
 - **Any single printable character starts editing** in SS/DB (matches Python's `len(k)==1`). Do NOT filter to letters/digits — that breaks formula entry (`=A1+B2`, parentheses).
+- **Spell check (WP, Alt-W)** keys: `[A]ccept [R]eplace [I]gnore [D]ict [S]kip`. `[D]` adds the word to the persistent custom dictionary (`SpellCheck.AddToCustomDictAsync`). The summary line reports checked / replaced / added-to-dict counts.
+- **Menus**: Main Menu = Add / Work / Save / Remove / Other Activities / Quit. Other Activities = Settings / Manage Desktops / Custom Dictionary (Export/Import) / About.
 
 ### Formula engine (`Core/FormulaEngine.cs`)
 - Tokenizer regex supports numbers, cell refs (`$A$1`), functions, and operators `[-+*/^(),:<>=]`.
@@ -53,7 +57,7 @@ dotnet run --project "c:\dev\RetroWorks\conversion\RetroWorks\RetroWorks.csproj"
 - `Components/RetroScreen.razor` — renders the whole grid as **one `MarkupString`** (StringBuilder over VChars/VAttrs). No per-cell DOM diffing. Adds `" cursor"` class to the cell at `App.CursorAt`. HTML-escapes `< > & "`.
 - `Components/RetroApp.razor` — holds `_appRef = DotNetObjectReference.Create(this)`; imports JS module in `OnAfterRenderAsync`; wires `RenderRequested`→`StateHasChanged`, download/load/localStorage funcs; `SyncTheme()` calls `setTheme(theme, crtEmulation)` so both the phosphor color and the CRT class stay in sync; app-loop catch → `jsModule.InvokeVoidAsync("reportError", ...)`.
 - **`[JSInvokable] OnKey(string token)` must live on the component (`RetroApp.razor`), NOT on `Core.App`** — JS can only invoke methods on DotNetObjectReference targets. This was a real bug: invocations to Core.App silently failed and the app froze at splash.
-- `wwwroot/js/interop.js` — `mapKey()` maps KeyboardEvent→token (named keys, Alt+Shift+letter → `"AS-X"`, Alt+letter → `"A-X"`, any other single char passes through); global keydown with `preventDefault`; `reportError(msg)` shows a fixed red banner; `loadFile` has oncancel + settled flag + 120s timeout. localStorage functions: `saveLocalFile` / `loadLocalFile` / `listLocalFiles` / `deleteLocalFile` (all under key `retroworks.files`; corrupt store → start fresh, never crash).
+- `wwwroot/js/interop.js` — `mapKey()` maps KeyboardEvent→token (named keys, Alt+Shift+letter → `"AS-X"`, Alt+letter → `"A-X"`, any other single char passes through); global keydown with `preventDefault`; `reportError(msg)` shows a fixed red banner; `loadFile` has oncancel + settled flag + 120s timeout. localStorage functions: `saveLocalFile` / `loadLocalFile` / `listLocalFiles` / `deleteLocalFile` (all under key `retroworks.files`; corrupt store → start fresh, never crash). Custom dictionary: `saveCustomDict` / `loadCustomDict` (separate global key `retroworks.customdict`, NOT per-Desktop).
 - `wwwroot/css/app.css` — phosphor theme: VT323 font, `--bg #050805`, `--fg-green #33ff66`, amber via `data-theme`; `.retro-cell { width: 0.5em }`. **CRT emulation** (toggle in Other Activities): `html.crt-on .retro-screen` gets rounded glass edges + a screen-door/scanline `::before` overlay with a slow rolling animation; colors derive from the theme vars so it works for green and amber alike.
 
 ### Localization

@@ -631,7 +631,7 @@ public sealed class WPDoc : Doc
     {
         int H = App.MinH, W = App.MinW;
         var ignored = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        int checkedCount = 0, replacedCount = 0;
+        int checkedCount = 0, replacedCount = 0, dictCount = 0;
 
         // A document spell check always starts at the top — save the user's
         // cursor and restore it when we finish (or they cancel).
@@ -661,7 +661,7 @@ public sealed class WPDoc : Doc
             string line = $"{prompt} {word}";
             if (s1 is not null) line += $"  [1]{s1}";
             if (s2 is not null) line += $"  [2]{s2}";
-            // Key legend, e.g. "[A]ccept [R]eplace [I]gnore [S]kip" — localizable.
+            // Key legend, e.g. "[A]ccept [R]eplace [I]gnore [D]ict [S]kip" — localizable.
             line += "   " + Localizer.S("SpellKeys");
 
             App.Put(H - 1, 0, new string(' ', W));
@@ -684,6 +684,14 @@ public sealed class WPDoc : Doc
                     case 'a':
                     case 'i':
                         acceptAsIs = true;
+                        break;
+                    case 'd':
+                        // Add to custom dictionary — permanently known from now on.
+                        await SpellCheck.AddToCustomDictAsync(word);
+                        ignored.Add(word);   // also skip for this session
+                        _ci = end;
+                        dictCount++;
+                        App.Msg = Localizer.T("SpellAddedToDict", word);
                         break;
                     case '1' when s1 is not null: chosen = s1; break;
                     case '2' when s2 is not null: chosen = s2; break;
@@ -725,7 +733,7 @@ public sealed class WPDoc : Doc
 
         _pi = savePi; _ci = saveCi;   // restore the user's original cursor
         App.CursorAt = null;
-        App.Msg = Localizer.T("SpellDone", checkedCount, replacedCount);
+        App.Msg = Localizer.T("SpellDone", checkedCount, replacedCount, dictCount);
     }
 
     /// <summary>Find the next unknown Latin word at or after the cursor position.</summary>

@@ -37,9 +37,17 @@
   <data name="KindHelp" xml:space="preserve"><value>{0} Help</value></data>
   <data name="ClipboardEmpty" xml:space="preserve"><value>The clipboard is empty.</value></data>
   <data name="SpellPrompt" xml:space="preserve"><value>Spelling:</value></data>
-  <data name="SpellKeys" xml:space="preserve"><value>[A]ccept [R]eplace [I]gnore [S]kip</value></data>
+  <data name="SpellKeys" xml:space="preserve"><value>[A]ccept [R]eplace [I]gnore [D]ict [S]kip</value></data>
+  <data name="SpellAddedToDict" xml:space="preserve"><value>"{0}" added to custom dictionary.</value></data>
+  <data name="CustomDictionary" xml:space="preserve"><value>Custom Dictionary</value></data>
+  <data name="DictExport" xml:space="preserve"><value>Export Custom Dictionary</value></data>
+  <data name="DictImport" xml:space="preserve"><value>Import Custom Dictionary</value></data>
+  <data name="DictExported" xml:space="preserve"><value>Exported {0} word(s) to custom-dictionary.txt.</value></data>
+  <data name="DictImported" xml:space="preserve"><value>Imported {0} new word(s). Total: {1}.</value></data>
+  <data name="DictTooLarge" xml:space="preserve"><value>File too large (max 128 KB).</value></data>
+  <data name="DictNoNewWords" xml:space="preserve"><value>No new words to import.</value></data>
   <data name="SpellReplaceWith" xml:space="preserve"><value>Replace {0} with:</value></data>
-  <data name="SpellDone" xml:space="preserve"><value>Spell check done: {0} word(s) checked, {1} replaced.</value></data>
+  <data name="SpellDone" xml:space="preserve"><value>Spell check done: {0} checked, {1} replaced, {2} added to dict.</value></data>
   <data name="CouldNotWriteFile" xml:space="preserve"><value>Could not write file: {0}</value></data>
   <data name="ThanksForUsing" xml:space="preserve"><value>Thanks for using RetroWorks ][.  Your files are in memory.</value></data>
 
@@ -332,7 +340,8 @@ Alt-X ............ cut paragraph       Alt-C ........... copy paragraph
 Alt-V ............ paste paragraph(s) above the cursor
 
 Alt-F ............ find (again)        Alt-R ........... replace all
-Alt-W ............ spell check: 1/2=pick A=accept R=replace I=gnore S=kip
+Alt-W ............ spell check: 1/2=pick A=accept R=replace I=gnore D=dict S=kip
+                  (D adds the word to your custom dictionary permanently)
                   (English words only; Hebrew text is not checked)
 Alt-P ............ "print" to a .txt file (76 cols, pages + header/footer)
 Alt-Shift-P ...... "print" to PDF (ImgWriter NLQ font, US Letter)
